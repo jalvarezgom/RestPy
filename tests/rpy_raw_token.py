@@ -43,4 +43,4 @@ class TestRPYRawToken:
         assert url.name == "me"
         assert url.url == "/riot/account/v1/accounts/me"
         assert url.request_methods == [HTTPMethod.GET]
-        assert not url.fields
+        assert not url.fields_list

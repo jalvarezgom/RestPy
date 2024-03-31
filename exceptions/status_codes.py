@@ -24,6 +24,15 @@ class RestPyStatusCodeException(RestPyRunnerException):
         return response.status_code not in cls.status_code
 
 
+class RestPyIsValidStatusResponse(RestPyStatusCodeException):
+    base_message = "Request - Invalid status response"
+
+    @classmethod
+    def _validation(cls, response, **xtra_params):
+        valid_status = xtra_params.get("valid_status")
+        return response.status_code not in valid_status
+
+
 class RestPyIsInformationalResponse(RestPyStatusCodeException):
     base_message = "Request - NO Informational response"
 

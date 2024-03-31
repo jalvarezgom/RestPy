@@ -3,6 +3,7 @@ from http import HTTPStatus, HTTPMethod
 from logging import Logger
 from typing import List, Dict
 
+from choices.request_method import RequestMethodChoice
 from classes.url import RestPyURL
 from auth.auth import RestPyAuthModule
 from choices.data_type import DataTypeChoice
@@ -10,7 +11,7 @@ from classes.response import RESTpyResponse
 from exceptions.auth import RestPyAuthException
 from exceptions.base import RestPyRunnerException
 from exceptions.request import RestPyRequestMethodException
-from exceptions.status_codes import RestPyLoginException
+from exceptions.status_codes import RestPyLoginException, RestPyIsInformationalResponse, RestPyIsSuccessResponse, RestPyIsValidStatusResponse
 
 
 class RestPyModule:
@@ -28,12 +29,12 @@ class RestPyModule:
     # endpoint_url = None
     # params_fields: dict = {}
     # data_fields: dict = {}
-    # request_data_type = DataTypeChoice.DICT
+    request_data_type = DataTypeChoice.DICT
     _response_data_type = DataTypeChoice.JSON
     _response_manager = RESTpyResponse
 
     # [Validators]
-    _EXCEPTION_VALID_STATUS_RUNNER = []
+    _EXCEPTION_VALID_STATUS_RUNNER = [RestPyIsSuccessResponse]
     _EXCEPTION_VALID_RESPONSE_RUNNER = []
     _VALID_STATUS = [
         HTTPStatus.OK,
@@ -43,17 +44,17 @@ class RestPyModule:
     ]  # https://docs.python.org/3/library/http.html#http-status-codes
 
     # [Others]
-    headers: dict = None
+    headers: dict = {}
     _logger: Logger = None
 
     def __init__(self, base_url: str = None, auth_action: RestPyAuthModule = None):
         self.registered_urls: Dict[str, RestPyURL] = {}
         self.__registered_urls_list: List[RestPyURL] = []
         self._base_url: str = base_url
-        self.headers = {}
         if auth_action and not (isinstance(auth_action, RestPyAuthModule)):
             raise ValueError("auth_action must be an instance of RestPyAuth or a dictionary with the auth parameters.")
-        self.auth_module: RestPyAuthModule = auth_action
+        if auth_action:
+            self.auth_module = auth_action
 
     # [Properties]
     @property
@@ -129,19 +130,19 @@ class RestPyModule:
 
     def search_url(self, *, name: str = None, url_str: str = None):
         if name:
-            url = self.__search_url_by_name(name)
+            url = self._search_url_by_name(name)
         elif url_str:
-            url = self.__search_url_by_url(url_str)
+            url = self._search_url_by_url(url_str)
         else:
             raise ValueError("name or url_str is required.")
         if not url:
             self.logger.debug(f"[{self.name}] RestPyURL not found. Params: Name {name} - URL: {url} ")
         return url
 
-    def __search_url_by_name(self, name: str):
+    def _search_url_by_name(self, name: str):
         return self.registered_urls.get(name, None)
 
-    def __search_url_by_url(self, url: str):
+    def _search_url_by_url(self, url: str):
         return next((rp_url for rp_url in self.registered_urls if rp_url.url == url), None)
 
     # [Actions]
@@ -165,21 +166,22 @@ class RestPyModule:
         url: RestPyURL | None = self.search_url(name=name, url_str=url_str)
         # Validar request method
         field_errors = self._validate_request_method(request_method, url)
-        # Validar la peticion
+        # TODO: Validar la peticion
 
         if field_errors:
             self.logger.error(f"[{self.name}] Error in request - {field_errors}")
             return self._prepare_response(None, field_errors)
 
+        # TODO: First login
         counter_request = 0
         while counter_request < self.RETRIES_URL:
             response = self._send_request(request_method, url, url_params, query_params, **xtra_params)
             counter_request += 1
-            if self.__check_login_action(response):
+            if self._check_login_action(response):
                 self.logger.info(f"[{self.name}] Login refreshed")
                 self.login(refresh=True)
                 continue
-            if not self.__check_retry_action(response):
+            if not self._check_retry_action(response):
                 break
             self.logger.debug(f"[{self.name}] Retry {counter_request} - {response.status_code}")
         # Validamos status
@@ -192,13 +194,46 @@ class RestPyModule:
             return self._prepare_response(None, field_errors)
         return self._prepare_response(response, None)
 
-    def _send_request(self, request_method, url, params, data):
-        return {}
+    def _send_request(self, request_method, rp_url, params, data):
+        # Add custom data to pre url
+        nurl, nparams = self._apply_custom_data_to_pre_url(request_method, rp_url, params)
+        # URI Params
+        nurl, nparams = self._generate_url_params_url(request_method, rp_url, nurl, nparams)
+        # Add custom data to post url
+        nurl, nparams = self._apply_custom_data_to_post_url(request_method, rp_url, nurl, nparams)
 
-    def __check_login_action(self, response):
+        # Prepare request data
+        nheaders, ndata = DataTypeChoice.parse_request(self.request_data_type, data)
+
+        # Apply headers
+        headers = self.headers.copy()
+        headers.update(self.auth_headers)
+        headers.update(nheaders)
+
+        self.logger.debug(f"[{self.name}] {request_method} {nurl} {nparams} {ndata}")
+        return RequestMethodChoice.request(request_method)(nurl, params=nparams, data=ndata, headers=self.headers, cookies=self.auth_module.cookies)
+
+    def _apply_custom_data_to_pre_url(self, request_method, rp_url, params):
+        return rp_url.url, params
+
+    def _apply_custom_data_to_post_url(self, request_method, rp_url, url, params):
+        return url, params
+
+    def _generate_url_params_url(self, request_method, rp_url, url, url_params):
+        uri_params_url = []
+        for str_field, field in rp_url.url_fields.items():
+            url_value = url_params.get(str_field)
+            if url_value:
+                uri_params_url.append(url_value)
+                url_params.pop(str_field, None)
+        if uri_params_url:
+            url = url.url.format(uri_params_url)
+        return url, url_params
+
+    def _check_login_action(self, response):
         return response.status_code in self.REFRESH_LOGIN_STATUS_CODES
 
-    def __check_retry_action(self, response):
+    def _check_retry_action(self, response):
         return response.status_code in self.RETRIES_STATUS_CODES
 
     def _prepare_response(self, response, field_errors):
@@ -231,7 +266,8 @@ class RestPyModule:
 
     def _validate_response_status(self, response, **xtra_params):
         list_exceptions = []
-        if response.status_code not in self._VALID_STATUS:
+        exception = RestPyIsValidStatusResponse.validate(response, valid_status=self._VALID_STATUS)
+        if exception:
             for exception in self._validator_runner(self._EXCEPTION_VALID_STATUS_RUNNER, response):
                 if exception:
                     list_exceptions.append(exception)
