@@ -1,5 +1,5 @@
-from exceptions.base import RESTpyException
+from exceptions.base import RestPyException
 
-class RESTpyAuthException(RESTpyException):
+
+class RestPyAuthException(RestPyException):
     base_message = "Auth error"
-

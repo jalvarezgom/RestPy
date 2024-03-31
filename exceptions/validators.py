@@ -1,5 +1,9 @@
-from exceptions.base import RESTpyException
+from exceptions.base import RestPyException
 
 
-class RESTpyValidatorException(RESTpyException):
+class RestPyValidatorException(RestPyException):
     base_message = "Validator error"
+
+
+class RESTpyValidatorRequestMethodException(RestPyValidatorException):
+    base_message = "Request method not supported"
