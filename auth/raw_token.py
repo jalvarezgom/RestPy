@@ -1,12 +1,14 @@
-import logging
-
-from auth.auth import RESTpyAuth
+from auth.auth import RestPyAuthModule
 
 
-class RESTpyAuthRawToken(RESTpyAuth):
-    mode = 'RAW_TOKEN'
+class RestPyAuthRawToken(RestPyAuthModule):
+    mode = "RAW_TOKEN"
 
     raw_token = None
+
+    def __init__(self, *, raw_token: str, **xtra_params):
+        self.raw_token = raw_token
+        super().__init__(**xtra_params)
 
     @property
     def token(self):
