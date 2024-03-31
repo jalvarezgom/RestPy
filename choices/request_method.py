@@ -1,13 +1,18 @@
+from http import HTTPMethod
+
 import requests
 
-class RequestMethod():
-    GET = 1
-    POST = 2
 
+class RequestMethodChoice:
     @staticmethod
     def request(method):
         methods = {
-            RequestMethod.GET: requests.get,
-            RequestMethod.POST: requests.post
+            HTTPMethod.GET: requests.get,
+            HTTPMethod.POST: requests.post,
+            HTTPMethod.PUT: requests.put,
+            HTTPMethod.PATCH: requests.patch,
+            HTTPMethod.DELETE: requests.delete,
+            HTTPMethod.HEAD: requests.head,
+            HTTPMethod.OPTIONS: requests.options,
         }
         return methods[method]
