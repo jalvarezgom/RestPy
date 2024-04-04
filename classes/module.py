@@ -1,4 +1,5 @@
 import logging
+import time
 from http import HTTPStatus, HTTPMethod
 from logging import Logger
 from typing import List, Dict
@@ -21,15 +22,13 @@ class RestPyModule:
     # [Actions]
     RETRIES_URL = 3
     RETRIES_TIMEOUT_SECONDS = 1
+    RETRIES_TIMEOUT_STATUS_CODES = [HTTPStatus.REQUEST_TIMEOUT, HTTPStatus.GATEWAY_TIMEOUT]
     RETRIES_STATUS_CODES = [HTTPStatus.REQUEST_TIMEOUT, HTTPStatus.GATEWAY_TIMEOUT]
     REFRESH_LOGIN_STATUS_CODES = [HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN]
     _base_url: str = None
 
     # TODO: Refactorizar a entidad
-    # endpoint_url = None
-    # params_fields: dict = {}
-    # data_fields: dict = {}
-    request_data_type = DataTypeChoice.DICT
+    _request_data_type = DataTypeChoice.DICT
     _response_data_type = DataTypeChoice.JSON
     _response_manager = RESTpyResponse
 
@@ -47,10 +46,11 @@ class RestPyModule:
     headers: dict = {}
     _logger: Logger = None
 
-    def __init__(self, base_url: str = None, auth_action: RestPyAuthModule = None):
+    def __init__(self, base_url: str = None, base_url_params: list = [], auth_action: RestPyAuthModule = None):
         self.registered_urls: Dict[str, RestPyURL] = {}
         self.__registered_urls_list: List[RestPyURL] = []
         self._base_url: str = base_url
+        self._base_url_params: list = base_url_params
         if auth_action and not (isinstance(auth_action, RestPyAuthModule)):
             raise ValueError("auth_action must be an instance of RestPyAuth or a dictionary with the auth parameters.")
         if auth_action:
@@ -112,6 +112,7 @@ class RestPyModule:
         url_params: List[Dict] = [],
         query_params: List[Dict] = [],
     ):
+        url_params = self._base_url_params + url_params
         if not url or not isinstance(url, str):
             raise ValueError("url is required with type str.")
         if not request_methods or not isinstance(request_methods, List):
@@ -146,42 +147,42 @@ class RestPyModule:
         return next((rp_url for rp_url in self.registered_urls if rp_url.url == url), None)
 
     # [Actions]
-    def get(self, name: str = None, url_str: str = None, url_params={}, query_params={}, **xtra_params):
-        return self._emit_request(HTTPMethod.GET, name=name, url_str=url_str, url_params=url_params, query_params=query_params, **xtra_params)
+    def get(self, name: str = None, url_str: str = None, url_params={}, query_params={}, data_params={}, **xtra_params):
+        return self._emit_request(HTTPMethod.GET, name=name, url_str=url_str, url_params=url_params, query_params=query_params, data_params=data_params, **xtra_params)
 
-    def post(self, name: str = None, url_params={}, query_params={}, data={}, **xtra_params):
-        return self._emit_request(HTTPMethod.POST, name=name, url_params=url_params, query_params=query_params, data=data, **xtra_params)
+    def post(self, name: str = None, url_params={}, query_params={}, data_params={}, **xtra_params):
+        return self._emit_request(HTTPMethod.POST, name=name, url_params=url_params, query_params=query_params, data_params=data_params, **xtra_params)
 
-    def put(self, name: str = None, url_params={}, query_params={}, data={}, **xtra_params):
-        return self._emit_request(HTTPMethod.PUT, name=name, url_params=url_params, query_params=query_params, data=data, **xtra_params)
+    def put(self, name: str = None, url_params={}, query_params={}, data_params={}, **xtra_params):
+        return self._emit_request(HTTPMethod.PUT, name=name, url_params=url_params, query_params=query_params, data_params=data_params, **xtra_params)
 
-    def patch(self, name: str = None, url_params={}, query_params={}, data={}, **xtra_params):
-        return self._emit_request(HTTPMethod.PATCH, name=name, url_params=url_params, query_params=query_params, data=data, **xtra_params)
+    def patch(self, name: str = None, url_params={}, query_params={}, data_params={}, **xtra_params):
+        return self._emit_request(HTTPMethod.PATCH, name=name, url_params=url_params, query_params=query_params, data_params=data_params, **xtra_params)
 
-    def delete(self, name: str = None, url_params={}, query_params={}, data={}, **xtra_params):
-        return self._emit_request(HTTPMethod.DELETE, name=name, url_params=url_params, query_params=query_params, data=data, **xtra_params)
+    def delete(self, name: str = None, url_params={}, query_params={}, data_params={}, **xtra_params):
+        return self._emit_request(HTTPMethod.DELETE, name=name, url_params=url_params, query_params=query_params, data_params=data_params, **xtra_params)
 
-    def _emit_request(self, request_method: HTTPMethod, name: str = None, url_str: str = None, url_params={}, query_params={}, **xtra_params):
-        errors = []
-        url: RestPyURL | None = self.search_url(name=name, url_str=url_str)
+    def _emit_request(self, request_method: HTTPMethod, name: str, url_str: str, url_params, query_params, data_params, **xtra_params):
+        rp_url: RestPyURL | None = self.search_url(name=name, url_str=url_str)
         # Validar request method
-        field_errors = self._validate_request_method(request_method, url)
+        field_errors = self._validate_request_method(request_method, rp_url)
         # TODO: Validar la peticion
-
         if field_errors:
             self.logger.error(f"[{self.name}] Error in request - {field_errors}")
             return self._prepare_response(None, field_errors)
 
-        # TODO: First login
-        counter_request = 0
+        self.login()
+        response, counter_request = None, 0
         while counter_request < self.RETRIES_URL:
-            response = self._send_request(request_method, url, url_params, query_params, **xtra_params)
+            response = self._send_request(request_method, rp_url, response, url_params, query_params, data_params, **xtra_params)
             counter_request += 1
             if self._check_login_action(response):
                 self.logger.info(f"[{self.name}] Login refreshed")
                 self.login(refresh=True)
                 continue
-            if not self._check_retry_action(response):
+            if self._check_retry_action_and_timeout(response):
+                time.sleep(self.RETRIES_TIMEOUT_SECONDS)
+            elif not self._check_retry_action(response):
                 break
             self.logger.debug(f"[{self.name}] Retry {counter_request} - {response.status_code}")
         # Validamos status
@@ -194,40 +195,49 @@ class RestPyModule:
             return self._prepare_response(None, field_errors)
         return self._prepare_response(response, None)
 
-    def _send_request(self, request_method, rp_url, params, data):
-        # Add custom data to pre url
-        nurl, nparams = self._apply_custom_data_to_pre_url(request_method, rp_url, params)
-        # URI Params
-        nurl, nparams = self._generate_url_params_url(request_method, rp_url, nurl, nparams)
-        # Add custom data to post url
-        nurl, nparams = self._apply_custom_data_to_post_url(request_method, rp_url, nurl, nparams)
-
+    def _send_request(self, request_method, rp_url, response, url_params, query_params, data_params):
         # Prepare request data
-        nheaders, ndata = DataTypeChoice.parse_request(self.request_data_type, data)
+        nheaders, ndata = DataTypeChoice.parse_request(self._request_data_type, data_params)
 
         # Apply headers
         headers = self.headers.copy()
         headers.update(self.auth_headers)
         headers.update(nheaders)
+        if response is None:
+            if self.base_url:
+                nurl = f'{self.base_url}{rp_url.url}'
+            else:
+                nurl = rp_url.url
+            # Add custom data to pre url
+            nurl, nparams = self._apply_custom_data_to_pre_url(request_method, rp_url, nurl, url_params)
+            # URI Params
+            nurl, nparams = self._generate_url_params_url(request_method, rp_url, nurl, nparams)
+            # Add custom data to post url
+            nurl, nparams = self._apply_custom_data_to_post_url(request_method, rp_url, nurl, nparams)
 
-        self.logger.debug(f"[{self.name}] {request_method} {nurl} {nparams} {ndata}")
-        return RequestMethodChoice.request(request_method)(nurl, params=nparams, data=ndata, headers=self.headers, cookies=self.auth_module.cookies)
 
-    def _apply_custom_data_to_pre_url(self, request_method, rp_url, params):
-        return rp_url.url, params
+            self.logger.debug(f"[{self.name}] {request_method} {nurl} {nparams} {ndata}")
+            return RequestMethodChoice.request(request_method)(nurl, params=query_params, data=ndata,
+                                                               headers=headers, cookies=self.auth_module.cookies)
+        else:
+            return RequestMethodChoice.request(request_method)(response.request.url, params=query_params, data=ndata,
+                                                               headers=headers, cookies=self.auth_module.cookies)
+
+    def _apply_custom_data_to_pre_url(self, request_method, rp_url, nurl, params):
+        return nurl, params
 
     def _apply_custom_data_to_post_url(self, request_method, rp_url, url, params):
         return url, params
 
     def _generate_url_params_url(self, request_method, rp_url, url, url_params):
-        uri_params_url = []
+        uri_params_url = {}
         for str_field, field in rp_url.url_fields.items():
             url_value = url_params.get(str_field)
             if url_value:
-                uri_params_url.append(url_value)
+                uri_params_url[str_field] = url_value
                 url_params.pop(str_field, None)
         if uri_params_url:
-            url = url.url.format(uri_params_url)
+            url = url.format(**uri_params_url)
         return url, url_params
 
     def _check_login_action(self, response):
@@ -235,6 +245,9 @@ class RestPyModule:
 
     def _check_retry_action(self, response):
         return response.status_code in self.RETRIES_STATUS_CODES
+
+    def _check_retry_action_and_timeout(self, response):
+        return response.status_code in self.RETRIES_TIMEOUT_STATUS_CODES
 
     def _prepare_response(self, response, field_errors):
         if field_errors:
