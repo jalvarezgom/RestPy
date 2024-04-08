@@ -12,7 +12,7 @@ from classes.response import RESTpyResponse
 from exceptions.auth import RestPyAuthException
 from exceptions.base import RestPyRunnerException
 from exceptions.request import RestPyRequestMethodException
-from exceptions.status_codes import RestPyLoginException, RestPyIsInformationalResponse, RestPyIsSuccessResponse, RestPyIsValidStatusResponse
+from exceptions.status_codes import RestPyLoginException, RestPyIsSuccessResponse, RestPyIsValidStatusResponse
 
 
 class RestPyModule:
@@ -28,9 +28,10 @@ class RestPyModule:
     _base_url: str = None
 
     # TODO: Refactorizar a entidad
-    _request_data_type = DataTypeChoice.DICT
-    _response_data_type = DataTypeChoice.JSON
-    _response_manager = RESTpyResponse
+    # [Default RP Urls]
+    default_request_data_type = DataTypeChoice.DICT
+    default_response_data_type = DataTypeChoice.JSON
+    default_response_manager = RESTpyResponse
 
     # [Validators]
     _EXCEPTION_VALID_STATUS_RUNNER = [RestPyIsSuccessResponse]
@@ -77,10 +78,6 @@ class RestPyModule:
                 self._logger = logging.getLogger()
         return self._logger
 
-    @property
-    def is_logger_functional(self):
-        return self.logger.hasHandlers()
-
     # [Authentication]
     def set_auth(self, auth_action):
         if not isinstance(auth_action, RestPyAuthModule):
@@ -109,23 +106,51 @@ class RestPyModule:
         name: str = None,
         url: str = None,
         request_methods: List[HTTPMethod] = [],
+        request_data_type: DataTypeChoice = None,
         url_params: List[Dict] = [],
         query_params: List[Dict] = [],
+        data_params: list = [],
+        response_data_type: DataTypeChoice = None,
+        response_manager: RESTpyResponse = None,
     ):
         url_params = self._base_url_params + url_params
         if not url or not isinstance(url, str):
             raise ValueError("url is required with type str.")
         if not request_methods or not isinstance(request_methods, List):
             raise ValueError("request_methods is required with type List[HTTPMethod]")
+        if not request_data_type:
+            request_data_type = self.default_request_data_type
+        if not isinstance(request_data_type, str):
+            raise ValueError("request_data_type must be an instance of DataTypeChoice.")
         if not all([isinstance(method, HTTPMethod) for method in request_methods]):
             raise ValueError("request_methods must be a list of HTTPMethod instances.")
         if not all([isinstance(param, dict) for param in url_params]):
             raise ValueError("url_params must be a list of dictionaries.")
         if not all([isinstance(param, dict) for param in query_params]):
             raise ValueError("query_params must be a list of dictionaries.")
+        if not all([isinstance(param, dict) for param in data_params]):
+            raise ValueError("data_params must be a list of dictionaries.")
+        if not response_data_type:
+            response_data_type = self.default_response_data_type
+        if not isinstance(response_data_type, str):
+            raise ValueError("response_data_type must be an instance of DataTypeChoice.")
+        if response_manager is None:
+            response_manager = self.default_response_manager
+        if response_manager is not RESTpyResponse:
+            raise ValueError("response_manager must be an RESTpyResponse class.")
         if name in self.registered_urls:
             raise ValueError(f"Name {name} is already registered in {self.name}.")
-        rp_url = RestPyURL(name=name, url=url, request_methods=request_methods, url_params=url_params, query_params=query_params)
+        rp_url = RestPyURL(
+            name=name,
+            url=url,
+            request_methods=request_methods,
+            request_data_type=response_data_type,
+            url_params=url_params,
+            query_params=query_params,
+            data_params=data_params,
+            response_data_type=response_data_type,
+            response_manager=response_manager,
+        )
         self.registered_urls[name] = rp_url
         self.__registered_urls_list.append(rp_url)
 
@@ -148,19 +173,27 @@ class RestPyModule:
 
     # [Actions]
     def get(self, name: str = None, url_str: str = None, url_params={}, query_params={}, data_params={}, **xtra_params):
-        return self._emit_request(HTTPMethod.GET, name=name, url_str=url_str, url_params=url_params, query_params=query_params, data_params=data_params, **xtra_params)
+        return self._emit_request(
+            HTTPMethod.GET, name=name, url_str=url_str, url_params=url_params, query_params=query_params, data_params=data_params, **xtra_params
+        )
 
     def post(self, name: str = None, url_params={}, query_params={}, data_params={}, **xtra_params):
-        return self._emit_request(HTTPMethod.POST, name=name, url_params=url_params, query_params=query_params, data_params=data_params, **xtra_params)
+        return self._emit_request(
+            HTTPMethod.POST, name=name, url_params=url_params, query_params=query_params, data_params=data_params, **xtra_params
+        )
 
     def put(self, name: str = None, url_params={}, query_params={}, data_params={}, **xtra_params):
         return self._emit_request(HTTPMethod.PUT, name=name, url_params=url_params, query_params=query_params, data_params=data_params, **xtra_params)
 
     def patch(self, name: str = None, url_params={}, query_params={}, data_params={}, **xtra_params):
-        return self._emit_request(HTTPMethod.PATCH, name=name, url_params=url_params, query_params=query_params, data_params=data_params, **xtra_params)
+        return self._emit_request(
+            HTTPMethod.PATCH, name=name, url_params=url_params, query_params=query_params, data_params=data_params, **xtra_params
+        )
 
     def delete(self, name: str = None, url_params={}, query_params={}, data_params={}, **xtra_params):
-        return self._emit_request(HTTPMethod.DELETE, name=name, url_params=url_params, query_params=query_params, data_params=data_params, **xtra_params)
+        return self._emit_request(
+            HTTPMethod.DELETE, name=name, url_params=url_params, query_params=query_params, data_params=data_params, **xtra_params
+        )
 
     def _emit_request(self, request_method: HTTPMethod, name: str, url_str: str, url_params, query_params, data_params, **xtra_params):
         rp_url: RestPyURL | None = self.search_url(name=name, url_str=url_str)
@@ -169,7 +202,7 @@ class RestPyModule:
         # TODO: Validar la peticion
         if field_errors:
             self.logger.error(f"[{self.name}] Error in request - {field_errors}")
-            return self._prepare_response(None, field_errors)
+            return self._prepare_response(rp_url, None, field_errors)
 
         self.login()
         response, counter_request = None, 0
@@ -186,18 +219,18 @@ class RestPyModule:
                 break
             self.logger.debug(f"[{self.name}] Retry {counter_request} - {response.status_code}")
         # Validamos status
-        field_errors = self._validate_response_status(response)
+        field_errors = self._validate_response_status(rp_url, response)
         if field_errors:
-            return self._prepare_response(None, field_errors)
+            return self._prepare_response(rp_url, None, field_errors)
         # Validamos la response
-        field_errors = self.validate_response_data(response)
+        field_errors = self.validate_response_data(rp_url, response)
         if field_errors:
-            return self._prepare_response(None, field_errors)
-        return self._prepare_response(response, None)
+            return self._prepare_response(rp_url, None, field_errors)
+        return self._prepare_response(rp_url, response, None)
 
     def _send_request(self, request_method, rp_url, response, url_params, query_params, data_params):
         # Prepare request data
-        nheaders, ndata = DataTypeChoice.parse_request(self._request_data_type, data_params)
+        nheaders, ndata = DataTypeChoice.parse_request(rp_url.request_data_type, data_params)
 
         # Apply headers
         headers = self.headers.copy()
@@ -205,7 +238,7 @@ class RestPyModule:
         headers.update(nheaders)
         if response is None:
             if self.base_url:
-                nurl = f'{self.base_url}{rp_url.url}'
+                nurl = f"{self.base_url}{rp_url.url}"
             else:
                 nurl = rp_url.url
             # Add custom data to pre url
@@ -215,13 +248,14 @@ class RestPyModule:
             # Add custom data to post url
             nurl, nparams = self._apply_custom_data_to_post_url(request_method, rp_url, nurl, nparams)
 
-
             self.logger.debug(f"[{self.name}] {request_method} {nurl} {nparams} {ndata}")
-            return RequestMethodChoice.request(request_method)(nurl, params=query_params, data=ndata,
-                                                               headers=headers, cookies=self.auth_module.cookies)
+            return RequestMethodChoice.request(request_method)(
+                nurl, params=query_params, data=ndata, headers=headers, cookies=self.auth_module.cookies
+            )
         else:
-            return RequestMethodChoice.request(request_method)(response.request.url, params=query_params, data=ndata,
-                                                               headers=headers, cookies=self.auth_module.cookies)
+            return RequestMethodChoice.request(request_method)(
+                response.request.url, params=query_params, data=ndata, headers=headers, cookies=self.auth_module.cookies
+            )
 
     def _apply_custom_data_to_pre_url(self, request_method, rp_url, nurl, params):
         return nurl, params
@@ -249,10 +283,10 @@ class RestPyModule:
     def _check_retry_action_and_timeout(self, response):
         return response.status_code in self.RETRIES_TIMEOUT_STATUS_CODES
 
-    def _prepare_response(self, response, field_errors):
+    def _prepare_response(self, rp_url, response, field_errors):
         if field_errors:
-            return self._response_manager(response, None, field_errors)
-        return self._response_manager(response, DataTypeChoice.parse_response(self._response_data_type, response), None)
+            return rp_url.response_manager(response, None, field_errors)
+        return rp_url.response_manager(response, DataTypeChoice.parse_response(rp_url.response_data_type, response), None)
 
     # [Validators]
     def _validate_request_method(self, request_method, url):
@@ -277,7 +311,7 @@ class RestPyModule:
     #             params[field] = value
     #     return field_errors
 
-    def _validate_response_status(self, response, **xtra_params):
+    def _validate_response_status(self, rp_url, response, **xtra_params):
         list_exceptions = []
         exception = RestPyIsValidStatusResponse.validate(response, valid_status=self._VALID_STATUS)
         if exception:
@@ -285,12 +319,12 @@ class RestPyModule:
                 if exception:
                     list_exceptions.append(exception)
                     break
-        if all([self._response_data_type == DataTypeChoice.JSON, not response.text.startswith("{")]):
+        if all([rp_url.response_data_type == DataTypeChoice.JSON, not response.text.startswith("{")]):
             response.status_code = HTTPStatus.NO_CONTENT
             self.logger.debug(f"[{self.name}] WARNING STATUS {response.status_code} - NO CONTENT")
         return list_exceptions
 
-    def validate_response_data(self, response, **xtra_params):
+    def validate_response_data(self, rp_url, response, **xtra_params):
         list_exceptions = []
         for exception in self._validator_runner(self._EXCEPTION_VALID_RESPONSE_RUNNER, response):
             if exception:

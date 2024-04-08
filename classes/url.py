@@ -3,6 +3,8 @@ from functools import cached_property
 from http import HTTPMethod
 from typing import Dict
 
+from choices.data_type import DataTypeChoice
+from classes.response import RESTpyResponse
 from validators.base import BaseValidator
 
 ALL_REQUEST_METHODS = [HTTPMethod.GET, HTTPMethod.POST, HTTPMethod.PUT, HTTPMethod.PATCH, HTTPMethod.DELETE]
@@ -38,9 +40,12 @@ class RestPyURL:
         name: str = None,
         url: str = "",
         request_methods: list[HTTPMethod] = ALL_REQUEST_METHODS,
+        request_data_type: DataTypeChoice = None,
         url_params: list = [],
         query_params: list = [],
         data_params: list = [],
+        response_data_type: DataTypeChoice = None,
+        response_manager: RESTpyResponse = None,
     ):
         if name in self._used_names:
             raise ValueError(f"[RestPyURL] Name {name} is already used.")
@@ -49,7 +54,10 @@ class RestPyURL:
         self.name: str = name
         self.url: str = url
         self.request_methods: list[HTTPMethod] = request_methods
+        self.request_data_type: DataTypeChoice = request_data_type
         self._fields: Dict[str, RESTpyField] = {}
+        self.response_data_type: DataTypeChoice = response_data_type
+        self._response_manager: RESTpyResponse = response_manager
         for url_param in url_params:
             field = RESTpyField(where_data=RestPyFieldWhereData.URL_PARAMS, **url_param)
             self._fields[field.name] = field
@@ -59,6 +67,10 @@ class RestPyURL:
         for dat in data_params:
             field = RESTpyField(where_data=RestPyFieldWhereData.BODY, **dat)
             self._fields[field.name] = field
+
+    @property
+    def response_manager(self):
+        return self._response_manager
 
     @property
     def fields_list(self):
@@ -78,5 +90,3 @@ class RestPyURL:
 
     def get_field(self, name):
         return self._fields.get(name, None)
-
-
