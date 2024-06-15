@@ -8,7 +8,8 @@ class RESTpyResponse:
     def __init__(self, response, data=None, errors=None):
         self._response = response
         self._data = data
-        self._parse_data(data)
+        if data:
+            self._parse_data(data)
         self.errors = errors
 
     @property

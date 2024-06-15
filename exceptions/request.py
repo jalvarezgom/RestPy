@@ -1,8 +1,7 @@
 from exceptions.base import RestPyException, RestPyRunnerException
 
 
-class RestPyResponseTypeException(RestPyException):
-    ...
+class RestPyResponseTypeException(RestPyException): ...
 
 
 class RestPyRequestMethodException(RestPyRunnerException):
