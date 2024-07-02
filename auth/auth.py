@@ -18,7 +18,7 @@ class RestPyAuthModule:
 
     @property
     def name(self):
-        return self.__name__
+        return self.__class__.__name__
 
     @property
     def token(self):

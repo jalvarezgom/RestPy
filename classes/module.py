@@ -10,7 +10,7 @@ from choices.data_type import DataTypeChoice
 from classes.response import RESTpyResponse
 from exceptions.auth import RestPyAuthException
 from exceptions.base import RestPyRunnerException
-from exceptions.request import RestPyRequestMethodException
+from exceptions.request import RestPyRequestMethodException, RestPyURLNotFoundException
 from exceptions.status_codes import RestPyLoginException, RestPyIsSuccessResponse, RestPyIsValidStatusResponse
 from choices.request_method import RequestMethodChoice
 from validators.required_field import RequiredFieldValidator
@@ -300,6 +300,8 @@ class RestPyModule:
 
     # [Validators]
     def _validate_request_method(self, request_method, url):
+        if url is None:
+            return [RestPyURLNotFoundException(url)]
         exception = RestPyRequestMethodException.validate(request_method, url=url)
         if exception:
             return [exception]
@@ -320,6 +322,7 @@ class RestPyModule:
     #         elif value:
     #             params[field] = value
     #     return field_errors
+    
     def _validate_request_fields(self, rp_url, url_params, query_params, **xtra_params):
         field_errors = []
         for field_name, rp_field in rp_url.url_fields:

@@ -1,6 +1,10 @@
 from exceptions.base import RestPyException, RestPyRunnerException
 
 
+class RestPyURLNotFoundException(RestPyException):
+    base_message = "URL not found"
+
+
 class RestPyResponseTypeException(RestPyException): ...
 
 
