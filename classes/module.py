@@ -4,7 +4,6 @@ from http import HTTPStatus, HTTPMethod
 from logging import Logger
 from typing import List, Dict
 
-from choices.request_method import RequestMethodChoice
 from classes.url import RestPyURL
 from auth.auth import RestPyAuthModule
 from choices.data_type import DataTypeChoice
@@ -13,6 +12,8 @@ from exceptions.auth import RestPyAuthException
 from exceptions.base import RestPyRunnerException
 from exceptions.request import RestPyRequestMethodException
 from exceptions.status_codes import RestPyLoginException, RestPyIsSuccessResponse, RestPyIsValidStatusResponse
+from choices.request_method import RequestMethodChoice
+from validators.required_field import RequiredFieldValidator
 
 
 class RestPyModule:
@@ -26,6 +27,7 @@ class RestPyModule:
     RETRIES_STATUS_CODES = [HTTPStatus.REQUEST_TIMEOUT, HTTPStatus.GATEWAY_TIMEOUT]
     REFRESH_LOGIN_STATUS_CODES = [HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN]
     _base_url: str = None
+    _base_url_params: list = []
 
     # TODO: Refactorizar a entidad
     # [Default RP Urls]
@@ -47,15 +49,23 @@ class RestPyModule:
     headers: dict = {}
     _logger: Logger = None
 
-    def __init__(self, base_url: str = None, base_url_params: list = [], auth_action: RestPyAuthModule = None):
+    def __init__(self, headers: dict = None, base_url: str = None, base_url_params: list = None, auth_action: RestPyAuthModule = None):
         self.registered_urls: Dict[str, RestPyURL] = {}
         self.__registered_urls_list: List[RestPyURL] = []
-        self._base_url: str = base_url
-        self._base_url_params: list = base_url_params
+        if headers:
+            self.headers = headers
+        if base_url:
+            self._base_url = base_url
+        if base_url_params:
+            self._base_url_params: list = base_url_params
         if auth_action and not (isinstance(auth_action, RestPyAuthModule)):
             raise ValueError("auth_action must be an instance of RestPyAuth or a dictionary with the auth parameters.")
         if auth_action:
             self.auth_module = auth_action
+        self.register_urls()
+
+    def register_urls(self):
+        pass
 
     # [Properties]
     @property
@@ -136,7 +146,7 @@ class RestPyModule:
             raise ValueError("response_data_type must be an instance of DataTypeChoice.")
         if response_manager is None:
             response_manager = self.default_response_manager
-        if response_manager is not RESTpyResponse:
+        if type(response_manager) is RESTpyResponse:
             raise ValueError("response_manager must be an RESTpyResponse class.")
         if name in self.registered_urls:
             raise ValueError(f"Name {name} is already registered in {self.name}.")
@@ -144,7 +154,7 @@ class RestPyModule:
             name=name,
             url=url,
             request_methods=request_methods,
-            request_data_type=response_data_type,
+            request_data_type=request_data_type,
             url_params=url_params,
             query_params=query_params,
             data_params=data_params,
@@ -205,13 +215,13 @@ class RestPyModule:
             return self._prepare_response(rp_url, None, field_errors)
 
         self.login()
-        response, counter_request = None, 0
+        response, counter_request, is_refreshed = None, 0, False
         while counter_request < self.RETRIES_URL:
             response = self._send_request(request_method, rp_url, response, url_params, query_params, data_params, **xtra_params)
             counter_request += 1
-            if self._check_login_action(response):
+            if self._check_login_action(response) and not is_refreshed:
                 self.logger.info(f"[{self.name}] Login refreshed")
-                self.login(refresh=True)
+                is_refreshed = self.login(refresh=True)
                 continue
             if self._check_retry_action_and_timeout(response):
                 time.sleep(self.RETRIES_TIMEOUT_SECONDS)
@@ -221,11 +231,11 @@ class RestPyModule:
         # Validamos status
         field_errors = self._validate_response_status(rp_url, response)
         if field_errors:
-            return self._prepare_response(rp_url, None, field_errors)
+            return self._prepare_response(rp_url, response, field_errors)
         # Validamos la response
         field_errors = self.validate_response_data(rp_url, response)
         if field_errors:
-            return self._prepare_response(rp_url, None, field_errors)
+            return self._prepare_response(rp_url, response, field_errors)
         return self._prepare_response(rp_url, response, None)
 
     def _send_request(self, request_method, rp_url, response, url_params, query_params, data_params):
@@ -254,7 +264,7 @@ class RestPyModule:
             )
         else:
             return RequestMethodChoice.request(request_method)(
-                response.request.url, params=query_params, data=ndata, headers=headers, cookies=self.auth_module.cookies
+                response.request.url, params={}, data=ndata, headers=headers, cookies=self.auth_module.cookies
             )
 
     def _apply_custom_data_to_pre_url(self, request_method, rp_url, nurl, params):
@@ -310,6 +320,14 @@ class RestPyModule:
     #         elif value:
     #             params[field] = value
     #     return field_errors
+    def _validate_request_fields(self, rp_url, url_params, query_params, **xtra_params):
+        field_errors = []
+        for field_name, rp_field in rp_url.url_fields:
+            value, exception = RequiredFieldValidator.validate(rp_field, url_params)
+            if exception:
+                field_errors.append(exception)
+                continue
+
 
     def _validate_response_status(self, rp_url, response, **xtra_params):
         list_exceptions = []
@@ -319,6 +337,7 @@ class RestPyModule:
                 if exception:
                     list_exceptions.append(exception)
                     break
+            return list_exceptions
         if all([rp_url.response_data_type == DataTypeChoice.JSON, not response.text.startswith("{")]):
             response.status_code = HTTPStatus.NO_CONTENT
             self.logger.debug(f"[{self.name}] WARNING STATUS {response.status_code} - NO CONTENT")

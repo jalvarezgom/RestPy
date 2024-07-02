@@ -6,16 +6,14 @@ class RequiredFieldValidator(BaseValidator):
     _error_message = "Field is required"
 
     @classmethod
-    def _validate(cls, fparam, field_and_params):
-        if not fparam.required:
+    def _validate(cls, rp_field, data):
+        if not rp_field.required:
             return (None, None)
-        params = field_and_params[1]
-        field_name = field_and_params[0]
-        value = params.get(field_name, None)
+        value = data.get(rp_field.name, None)
 
         (error_fields, error_msg) = {}, None
         if not value:
-            error_fields["field_name"] = field_name
+            error_fields["field_name"] = rp_field.name
             error_fields["value"] = value
             error_msg = cls.get_error_message(error_fields, error_msg=cls.error_message())
         return (value, error_msg)
