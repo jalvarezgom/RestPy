@@ -6,8 +6,8 @@ authors = [
     {name = "Jancel", email = "ja.alvarezgom@gmail.com"},
 ]
 dependencies = [
-    "requests>=2.32.3",
-    "xmltodict>=0.13.0",
+    "requests>=2.34.2",
+    "xmltodict>=1.0.4",
 ]
 requires-python = "==3.12.*"
 readme = "README.md"
@@ -25,6 +25,9 @@ build-backend = "pdm.backend"
 [tool.pdm]
 distribution = true
 
+[tool.pdm.build]
+includes = ["restpy"]
+
 [tool.pdm.dev-dependencies]
 lint = [
     "ruff>=0.5.5",
@@ -36,6 +39,9 @@ test = [
 [tool.pdm.scripts]
 lint.composite = ["ruff check --fix", "ruff format"]
 test = "pytest"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
@@ -72,8 +78,7 @@ exclude = [
 line-length = 150
 indent-width = 4
 
-# Assume Python 3.8
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
