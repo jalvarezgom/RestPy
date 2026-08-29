@@ -42,6 +42,9 @@ test = "pytest"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Integration tests hit real services; they are opt-in via `pytest -m integration`.
+addopts = "-m 'not integration'"
+markers = ["integration: performs real network requests against an external API"]
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.

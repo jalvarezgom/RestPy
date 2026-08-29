@@ -40,28 +40,37 @@ Note: `target-version` is `py311` while `requires-python` is `==3.12.*`; the cod
 
 ```
 tests/
-├── test_restpy.py         # URL registration and lookup
-└── test_rpy_raw_token.py  # client against the Riot API with a raw token
+├── conftest.py                # `api` fixture + FakeTransport/FakeResponse (offline transport)
+├── test_restpy.py             # URL registration and lookup
+├── test_module_behaviour.py   # the five verbs, lookup by path, per-client isolation
+├── test_rpy_mocked.py         # full request cycle against a mocked transport
+├── test_rpy_raw_token.py      # raw-token client, mocked
+└── test_rpy_pokeapi.py        # integration: real requests against PokeAPI
 ```
 
 Running them:
 
 ```bash
-pdm run test
-# or
+pdm run test                    # default suite: no network access
 pytest tests/test_restpy.py -v
+pytest -m integration           # only the tests that hit a real API
 ```
 
-Current state of the suite:
+The default run excludes anything marked `@pytest.mark.integration` via
+`addopts = "-m 'not integration'"` in `pyproject.toml`. Everything else is offline: the
+`transport` fixture replaces `RequestMethodChoice.request` with a `FakeTransport` that
+records each call (method, URL, params, headers) and replays the `FakeResponse` objects
+queued by the test.
 
-- `tests/test_restpy.py` depends on an `api` fixture that is not defined in any
-  `conftest.py`: those tests error out with a fixture-not-found failure.
-- `tests/test_rpy_raw_token.py` performs real requests against `api.riotgames.com` with a
-  development key hard-coded in the file, and its assertions check `RestPyURL` attributes
-  on what is actually a `RESTpyResponse`.
+Writing a test that emits a request:
 
-Before growing the coverage it is worth adding a `conftest.py` with the shared fixtures
-and replacing the network calls with mocked responses.
+```python
+def test_something(mock_api, transport):
+    transport.queue(FakeResponse(200, {"name": "ditto"}))
+    response = mock_api.get("mock_pokemon_by_name", url_params={"name": "ditto"})
+    assert response.data["name"] == "ditto"
+    assert transport.last_call.url == "https://pokeapi.test/api/v2/pokemon/ditto"
+```
 
 ## Publishing
 
