@@ -21,7 +21,7 @@ class RESTpyResponse:
 
     @property
     def url(self):
-        return self.response.url if self.response else None
+        return self.response.url if self.response is not None else None
 
     @property
     def response(self):
@@ -29,7 +29,7 @@ class RESTpyResponse:
 
     @property
     def status_code(self):
-        return self.response.status_code if self.response else None
+        return self.response.status_code if self.response is not None else None
 
     def __str__(self):
         return f"RESTpyResponse(url={self.url}, status_code={self.status_code}, data={self.data}, errors={self.errors})"

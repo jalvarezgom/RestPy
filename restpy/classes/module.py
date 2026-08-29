@@ -332,9 +332,10 @@ class RestPyModule:
         return response.status_code in self.RETRIES_TIMEOUT_STATUS_CODES
 
     def _prepare_response(self, rp_url, response, field_errors):
+        response_manager = rp_url.response_manager if rp_url is not None else self.default_response_manager
         if field_errors:
-            return rp_url.response_manager(response, None, field_errors)
-        return rp_url.response_manager(response, DataTypeChoice.parse_response(rp_url.response_data_type, response), None)
+            return response_manager(response, None, field_errors)
+        return response_manager(response, DataTypeChoice.parse_response(rp_url.response_data_type, response), None)
 
     # [Validators]
     def _validate_request_method(self, request_method, url):
