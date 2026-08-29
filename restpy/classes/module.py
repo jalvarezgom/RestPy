@@ -59,7 +59,7 @@ class RestPyModule:
 
     def __init__(self, headers: dict = None, base_url: str = None, base_url_params: list = None, auth_action: RestPyAuthModule = None):
         self.registered_urls: Dict[str, RestPyURL] = {}
-        self.__registered_urls_list: List[RestPyURL] = []
+        self._registrations: Dict[str, dict] = {}
         self.headers = dict(self.headers)
         self._base_url_params = list(self._base_url_params)
         self._VALID_STATUS = list(self._VALID_STATUS)
@@ -121,30 +121,56 @@ class RestPyModule:
         return status
 
     # [API]
-    def set_base_url(self, base_url: str):
+    def set_base_url(self, base_url: str, base_url_params: List[Dict] = None):
+        """Change the base URL and, optionally, its placeholders.
+
+        The new `base_url_params` replace the previous ones on every endpoint that is
+        already registered, so calling this after `register()` is safe.
+        """
         self._base_url = base_url
+        if base_url_params is not None:
+            self._base_url_params = list(base_url_params)
+            self._rebuild_registered_urls()
+
+    def _rebuild_registered_urls(self):
+        """Re-create every endpoint from its original registration, with the current base params."""
+        registrations = self._registrations
+        self.registered_urls, self._registrations = {}, {}
+        for registration in registrations.values():
+            self.register(**registration)
 
     def register(
         self,
         name: str = None,
         url: str = None,
-        request_methods: List[HTTPMethod] = [],
+        request_methods: List[HTTPMethod] = None,
         request_data_type: DataTypeChoice = None,
-        url_params: List[Dict] = [],
-        query_params: List[Dict] = [],
-        data_params: list = [],
+        url_params: List[Dict] = None,
+        query_params: List[Dict] = None,
+        data_params: list = None,
         response_data_type: DataTypeChoice = None,
         response_manager: RESTpyResponse = None,
     ):
-        url_params = self._base_url_params + url_params
+        registration = {
+            "name": name,
+            "url": url,
+            "request_methods": request_methods,
+            "request_data_type": request_data_type,
+            "url_params": url_params,
+            "query_params": query_params,
+            "data_params": data_params,
+            "response_data_type": response_data_type,
+            "response_manager": response_manager,
+        }
+        url_params = self._base_url_params + list(url_params or [])
+        query_params, data_params = list(query_params or []), list(data_params or [])
         if not url or not isinstance(url, str):
             raise ValueError("url is required with type str.")
         if not request_methods or not isinstance(request_methods, List):
             raise ValueError("request_methods is required with type List[HTTPMethod]")
         if not request_data_type:
             request_data_type = self.default_request_data_type
-        if not isinstance(request_data_type, str):
-            raise ValueError("request_data_type must be an instance of DataTypeChoice.")
+        request_data_type = self._validate_data_type(request_data_type, "request_data_type")
         if not all([isinstance(method, HTTPMethod) for method in request_methods]):
             raise ValueError("request_methods must be a list of HTTPMethod instances.")
         if not all([isinstance(param, dict) for param in url_params]):
@@ -155,8 +181,7 @@ class RestPyModule:
             raise ValueError("data_params must be a list of dictionaries.")
         if not response_data_type:
             response_data_type = self.default_response_data_type
-        if not isinstance(response_data_type, str):
-            raise ValueError("response_data_type must be an instance of DataTypeChoice.")
+        response_data_type = self._validate_data_type(response_data_type, "response_data_type")
         if response_manager is None:
             response_manager = self.default_response_manager
         if type(response_manager) is RESTpyResponse:
@@ -175,7 +200,14 @@ class RestPyModule:
             response_manager=response_manager,
         )
         self.registered_urls[name] = rp_url
-        self.__registered_urls_list.append(rp_url)
+        self._registrations[name] = registration
+
+    @staticmethod
+    def _validate_data_type(data_type, argument_name):
+        try:
+            return DataTypeChoice(data_type)
+        except ValueError:
+            raise ValueError(f"{argument_name} must be a DataTypeChoice member, got {data_type!r}.") from None
 
     def search_url(self, *, name: str = None, url_str: str = None):
         if name:
@@ -195,27 +227,33 @@ class RestPyModule:
         return next((rp_url for rp_url in self.registered_urls.values() if rp_url.url == url), None)
 
     # [Actions]
-    def get(self, name: str = None, url_str: str = None, url_params={}, query_params={}, data_params={}, **xtra_params):
+    def get(self, name: str = None, url_str: str = None, url_params: dict = None, query_params: dict = None, data_params: dict = None, **xtra_params):
         return self._emit_request(
             HTTPMethod.GET, name=name, url_str=url_str, url_params=url_params, query_params=query_params, data_params=data_params, **xtra_params
         )
 
-    def post(self, name: str = None, url_str: str = None, url_params={}, query_params={}, data_params={}, **xtra_params):
+    def post(
+        self, name: str = None, url_str: str = None, url_params: dict = None, query_params: dict = None, data_params: dict = None, **xtra_params
+    ):
         return self._emit_request(
             HTTPMethod.POST, name=name, url_str=url_str, url_params=url_params, query_params=query_params, data_params=data_params, **xtra_params
         )
 
-    def put(self, name: str = None, url_str: str = None, url_params={}, query_params={}, data_params={}, **xtra_params):
+    def put(self, name: str = None, url_str: str = None, url_params: dict = None, query_params: dict = None, data_params: dict = None, **xtra_params):
         return self._emit_request(
             HTTPMethod.PUT, name=name, url_str=url_str, url_params=url_params, query_params=query_params, data_params=data_params, **xtra_params
         )
 
-    def patch(self, name: str = None, url_str: str = None, url_params={}, query_params={}, data_params={}, **xtra_params):
+    def patch(
+        self, name: str = None, url_str: str = None, url_params: dict = None, query_params: dict = None, data_params: dict = None, **xtra_params
+    ):
         return self._emit_request(
             HTTPMethod.PATCH, name=name, url_str=url_str, url_params=url_params, query_params=query_params, data_params=data_params, **xtra_params
         )
 
-    def delete(self, name: str = None, url_str: str = None, url_params={}, query_params={}, data_params={}, **xtra_params):
+    def delete(
+        self, name: str = None, url_str: str = None, url_params: dict = None, query_params: dict = None, data_params: dict = None, **xtra_params
+    ):
         return self._emit_request(
             HTTPMethod.DELETE, name=name, url_str=url_str, url_params=url_params, query_params=query_params, data_params=data_params, **xtra_params
         )
@@ -313,7 +351,7 @@ class RestPyModule:
 
     def _generate_url_params_url(self, request_method, rp_url, url, url_params):
         uri_params_url = {}
-        for str_field, field in rp_url.url_fields.items():
+        for str_field in rp_url.url_fields:
             url_value = url_params.get(str_field)
             if url_value:
                 uri_params_url[str_field] = url_value
@@ -401,24 +439,27 @@ class RestPyModule:
             raise ValueError("status_code must be an instance of HTTPStatus")
         self._VALID_STATUS.remove(status_code)
 
+    @staticmethod
+    def _validate_exception_runner(exception_runner):
+        # The runners are used as classes: `_validator_runner()` calls `validate()` on them,
+        # and the defaults are classes too.
+        if not (isinstance(exception_runner, type) and issubclass(exception_runner, RestPyRunnerException)):
+            raise ValueError("exception_runner must be a RestPyRunnerException subclass")
+
     def add_exception_valid_status_runner(self, exception_runner):
-        if not isinstance(exception_runner, RestPyRunnerException):
-            raise ValueError("exception_runner must be an instance of RestPyRunnerException")
+        self._validate_exception_runner(exception_runner)
         self._EXCEPTION_VALID_STATUS_RUNNER.append(exception_runner)
 
     def remove_exception_valid_status_runner(self, exception_runner):
-        if not isinstance(exception_runner, RestPyRunnerException):
-            raise ValueError("exception_runner must be an instance of RestPyRunnerException")
+        self._validate_exception_runner(exception_runner)
         self._EXCEPTION_VALID_STATUS_RUNNER.remove(exception_runner)
 
     def add_exception_valid_response_runner(self, exception_runner):
-        if not isinstance(exception_runner, RestPyRunnerException):
-            raise ValueError("exception_runner must be an instance of RestPyRunnerException")
+        self._validate_exception_runner(exception_runner)
         self._EXCEPTION_VALID_RESPONSE_RUNNER.append(exception_runner)
 
     def remove_exception_valid_response_runner(self, exception_runner):
-        if not isinstance(exception_runner, RestPyRunnerException):
-            raise ValueError("exception_runner must be an instance of RestPyRunnerException")
+        self._validate_exception_runner(exception_runner)
         self._EXCEPTION_VALID_RESPONSE_RUNNER.remove(exception_runner)
 
     def _validator_runner(self, validations_to_run, response, **xtra_params):

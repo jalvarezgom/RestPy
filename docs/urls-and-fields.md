@@ -53,8 +53,15 @@ api = MyAPI(
 `base_url_params` is automatically added to the `url_params` of **every** endpoint
 registered afterwards, so `region` is resolved on each call without repeating it.
 
-It can also be set later with `set_base_url()`, although that does not reassign
-`base_url_params` on already-registered URLs.
+It can also be set later with `set_base_url(base_url, base_url_params=None)`. Passing
+`base_url_params` replaces the previous ones and re-registers every endpoint, so the new
+placeholders are resolved on URLs that were already registered:
+
+```python
+api.set_base_url("https://{tenant}.example.com", base_url_params=[{"name": "tenant"}])
+```
+
+Omitting `base_url_params` changes only the base URL and leaves the fields untouched.
 
 ## `RESTpyField`
 
@@ -92,14 +99,14 @@ The object representing a registered endpoint.
 | `data_fields` (`cached_property`) | Fields with `where_data == BODY`. |
 | `get_field(name)` | Returns a field by name, or `None`. |
 
-`RestPyURL` keeps a `_used_names` set **at class level**: an endpoint name must be unique
-across the whole process, not just within one client. Registering the same name twice —
-even on different clients — raises `ValueError`. See [RP-007](issues.md#rp-007).
+Endpoint names are unique **per client**: `register()` raises `ValueError` when the name
+is already in that client's `registered_urls`. Two different clients can each register a
+`"me"` endpoint without clashing.
 
 ## Looking endpoints up
 
 ```python
-url = api.search_url(name="summoner_by_name")                 # by name (recommended)
+url = api.search_url(name="summoner_by_name")  # by name (recommended)
 url = api.search_url(url_str="/riot/account/v1/accounts/me")  # by path
 ```
 

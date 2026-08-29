@@ -72,14 +72,14 @@ RestPy(headers=None, base_url=None, base_url_params=None, auth_action=None)
 |---|---|
 | `register_urls()` | Empty hook invoked at the end of `__init__`. Override it to declare endpoints. |
 | `register(...)` | Registers an endpoint. See [URLs and fields](urls-and-fields.md). |
-| `set_base_url(base_url)` | Changes the base URL. |
+| `set_base_url(base_url, base_url_params=None)` | Changes the base URL. When `base_url_params` is given it replaces the previous placeholders and re-registers every endpoint. |
 | `set_auth(auth_action)` | Sets the authentication module. `ValueError` if it is not a `RestPyAuthModule`. |
 | `login(refresh=False)` | Authenticates. `RestPyAuthException` when there is no auth module. |
 | `search_url(*, name=None, url_str=None)` | Looks an endpoint up. `ValueError` when no criterion is given. |
 | `get / post / put / patch / delete` | Emit the request and return a `RESTpyResponse`. |
 | `add_valid_status(code)` / `remove_valid_status(code)` | Manage `_VALID_STATUS`. Require an `HTTPStatus`. |
-| `add_exception_valid_status_runner(r)` / `remove_...` | Manage `_EXCEPTION_VALID_STATUS_RUNNER`. |
-| `add_exception_valid_response_runner(r)` / `remove_...` | Manage `_EXCEPTION_VALID_RESPONSE_RUNNER`. |
+| `add_exception_valid_status_runner(r)` / `remove_...` | Manage `_EXCEPTION_VALID_STATUS_RUNNER`. `r` must be a `RestPyRunnerException` **subclass**. |
+| `add_exception_valid_response_runner(r)` / `remove_...` | Manage `_EXCEPTION_VALID_RESPONSE_RUNNER`. `r` must be a `RestPyRunnerException` **subclass**. |
 | `validate_response_data(rp_url, response)` | Runs the payload runners. Overridable. |
 
 ### Overridable protected methods
@@ -98,9 +98,9 @@ RestPy(headers=None, base_url=None, base_url_params=None, auth_action=None)
 ## `RestPyURL`
 
 ```python
-RestPyURL(name=None, url="", request_methods=ALL_REQUEST_METHODS, request_data_type=None,
-          url_params=[], query_params=[], data_params=[], response_data_type=None,
-          response_manager=None)
+RestPyURL(name=None, url="", request_methods=None, request_data_type=None,
+          url_params=None, query_params=None, data_params=None,
+          response_data_type=None, response_manager=None)
 ```
 
 `ALL_REQUEST_METHODS = [GET, POST, PUT, PATCH, DELETE]`.
@@ -128,8 +128,9 @@ Overridable: `_parse_data(data)`.
 
 ## `DataTypeChoice`
 
-Constants `JSON`, `XML`, `TEXT`, `DICT`. Static methods `parse_request(type, data)`,
-`parse_response(type, response)`, `get_token(response, get_token_method, get_token_key)`.
+`StrEnum` with members `JSON`, `XML`, `TEXT`, `DICT`. Static methods
+`parse_request(type, data)`, `parse_response(type, response)`,
+`get_token(response, get_token_method, get_token_key)`.
 
 ## `RequestMethodChoice`
 
