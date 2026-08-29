@@ -65,6 +65,7 @@ RestPy(headers=None, base_url=None, base_url_params=None, auth_action=None)
 | `auth_headers` | Headers produced by the auth module. |
 | `logger` | The `restpy` logger (or the root logger when that one has no handlers). |
 | `registered_urls` | `Dict[str, RestPyURL]` of registered endpoints. |
+| `session` | The client's `requests.Session`, created on first use. Connections to the host are pooled and reused. |
 
 ### Methods
 
@@ -73,6 +74,7 @@ RestPy(headers=None, base_url=None, base_url_params=None, auth_action=None)
 | `register_urls()` | Empty hook invoked at the end of `__init__`. Override it to declare endpoints. |
 | `register(...)` | Registers an endpoint. See [URLs and fields](urls-and-fields.md). |
 | `set_base_url(base_url)` | Changes the base URL. |
+| `close()` | Closes the session and releases the pooled connections. The client stays usable: the next request opens a new session. Also available as a context manager (`with MyAPI(...) as api:`). |
 | `set_auth(auth_action)` | Sets the authentication module. `ValueError` if it is not a `RestPyAuthModule`. |
 | `login(refresh=False)` | Authenticates. `RestPyAuthException` when there is no auth module. |
 | `search_url(*, name=None, url_str=None)` | Looks an endpoint up. `ValueError` when no criterion is given. |
@@ -133,7 +135,8 @@ Constants `JSON`, `XML`, `TEXT`, `DICT`. Static methods `parse_request(type, dat
 
 ## `RequestMethodChoice`
 
-`RequestMethodChoice.request(HTTPMethod.GET)` returns the matching `requests` function.
+`RequestMethodChoice.request(HTTPMethod.GET, session=None)` returns the matching verb:
+bound to `session` when one is given, otherwise the module-level `requests` function.
 Supports `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD` and `OPTIONS`.
 
 ## Utilities

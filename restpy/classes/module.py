@@ -56,9 +56,11 @@ class RestPyModule:
     # [Others]
     headers: dict = {}
     _logger: Logger = None
+    _session: requests.Session = None
 
     def __init__(self, headers: dict = None, base_url: str = None, base_url_params: list = None, auth_action: RestPyAuthModule = None):
         self.registered_urls: Dict[str, RestPyURL] = {}
+        self._session: requests.Session = None
         self.__registered_urls_list: List[RestPyURL] = []
         self.headers = dict(self.headers)
         self._base_url_params = list(self._base_url_params)
@@ -92,6 +94,25 @@ class RestPyModule:
     @property
     def auth_headers(self):
         return self.auth_module.auth_headers
+
+    @property
+    def session(self) -> requests.Session:
+        """Per-client `requests.Session`, so connections to the host are pooled and reused."""
+        if self._session is None:
+            self._session = requests.Session()
+        return self._session
+
+    def close(self):
+        """Release the pooled connections. The client stays usable: a new session is created on demand."""
+        if self._session is not None:
+            self._session.close()
+            self._session = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
 
     @property
     def logger(self):
@@ -292,11 +313,11 @@ class RestPyModule:
             nurl, nparams = self._apply_custom_data_to_post_url(request_method, rp_url, nurl, nparams, **xtra_params)
 
             self.logger.debug(f"[{self.name}] {request_method} {nurl} {nparams} {ndata}")
-            return RequestMethodChoice.request(request_method)(
+            return RequestMethodChoice.request(request_method, session=self.session)(
                 nurl, params=query_params, data=ndata, headers=headers, cookies=self.auth_module.cookies, timeout=self.REQUEST_TIMEOUT_SECONDS
             )
         else:
-            return RequestMethodChoice.request(request_method)(
+            return RequestMethodChoice.request(request_method, session=self.session)(
                 response.request.url,
                 params={},
                 data=ndata,
