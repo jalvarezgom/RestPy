@@ -36,7 +36,7 @@ class BaseValidator:
         error_msg = None
         if not len(lerror_msg) == 0:
             if len(lerror_msg) > 1:
-                lerror_msg.insert(0, "Lista de errores identificados:")
+                lerror_msg.insert(0, "Errors found:")
             error_fields["field_name"] = field_name
             error_fields["value"] = original_value
             error_msg = cls.get_error_message(error_fields, "\n".join(lerror_msg))
@@ -50,7 +50,7 @@ class BaseValidator:
 
 
 class ChoiceValidator(BaseValidator):
-    _error_message = "Debe ser una opcion valida entre los choices {choice_class}"
+    _error_message = "Must be one of the valid choices in {choice_class}"
     _choice_class = None
 
     @classmethod
@@ -61,7 +61,7 @@ class ChoiceValidator(BaseValidator):
 
 
 class DatetimeValidator(BaseValidator):
-    _error_message = "Debe ser un objeto datetime o str con formato {format_date}"
+    _error_message = "Must be a datetime object or a str with format {format_date}"
     to_string = True
     format_date = None
 

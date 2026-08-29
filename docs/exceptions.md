@@ -89,6 +89,25 @@ Adds to `RestPyException`:
 | `RestPyResponseTypeException` | Unsupported `response_data_type` at parse time. **Raised.** |
 | `RestPyValidatorException` | A field validator rejects a value. **Returned** by `validate()`. |
 
+## What the library uses, and what it offers you
+
+The library itself only builds `RestPyIsSuccessResponse`, `RestPyIsValidStatusResponse`,
+`RestPyRequestMethodException`, `RestPyURLNotFoundException`, `RestPyLoginException`,
+`RESTpyTimeOutException`, `RestPyAuthException`, `RestPyResponseTypeException` and
+`RestPyValidatorException`.
+
+The rest — `RestPyIsInformationalResponse`, `RestPyIsRedirectResponse`,
+`RestPyIsClientErrorResponse`, `RestPyIsServerErrorResponse`, `RestPyForbiddenException`,
+`RestPyMethodNotAllowedException`, `RestPyInternalServerErrorException` — are **building
+blocks for your own runners**: register them with
+`add_exception_valid_status_runner()` / `add_exception_valid_response_runner()`.
+
+Every exception is importable from the package root:
+
+```python
+from restpy import RestPyIsServerErrorResponse
+```
+
 ## Recommended handling
 
 ```python

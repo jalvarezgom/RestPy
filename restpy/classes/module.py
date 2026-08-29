@@ -37,7 +37,7 @@ class RestPyModule:
     _base_url: str = None
     _base_url_params: list = []
 
-    # TODO: Refactorizar a entidad
+    # TODO: extract into its own entity
     # [Default RP Urls]
     default_request_data_type = DataTypeChoice.DICT
     default_response_data_type = DataTypeChoice.JSON
@@ -224,7 +224,7 @@ class RestPyModule:
         self, request_method: HTTPMethod, name: str = None, url_str: str = None, url_params=None, query_params=None, data_params=None, **xtra_params
     ):
         rp_url: RestPyURL | None = self.search_url(name=name, url_str=url_str)
-        # Validar request method
+        # Validate the request method
         field_errors = self._validate_request_method(request_method, rp_url)
         if field_errors:
             self.logger.error(f"[{self.name}] Error in request - {field_errors}")
@@ -261,11 +261,11 @@ class RestPyModule:
             self.logger.debug(f"[{self.name}] Retry {counter_request} - {response.status_code}")
         if timeout_exception is not None:
             return self._prepare_response(rp_url, None, [RESTpyTimeOutException(str(timeout_exception))])
-        # Validamos status
+        # Validate the response status
         field_errors = self._validate_response_status(rp_url, response)
         if field_errors:
             return self._prepare_response(rp_url, response, field_errors)
-        # Validamos la response
+        # Validate the response payload
         field_errors = self.validate_response_data(rp_url, response)
         if field_errors:
             return self._prepare_response(rp_url, response, field_errors)

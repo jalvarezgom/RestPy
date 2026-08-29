@@ -2,28 +2,19 @@
 
 ## Public exports
 
-```python
-from restpy import RestPy, RestPySingleton, RESTpyResponse, RestPyURL
-```
-
-Everything else is imported from its own module:
+The whole public API is available from the package root:
 
 ```python
-from restpy.auth.auth import RestPyAuthModule
-from restpy.auth.basic import RestPyAuthBasic
-from restpy.auth.raw_token import RestPyAuthRawToken
-from restpy.auth.oauth2 import RestPyAuthOAuth2
-from restpy.auth.disabled import RestPyAuthDisabled
-from restpy.choices.data_type import DataTypeChoice
-from restpy.choices.request_method import RequestMethodChoice
-from restpy.classes.url import RESTpyField, RestPyFieldWhereData
-from restpy.validators.base import BaseValidator, ChoiceValidator, DatetimeValidator, IgnoreCaseValidator
-from restpy.validators.date import DateYearMonthValidator, DateYearMonthDayValidator, DatetimeObjectValidator
-from restpy.validators.number import NumberValidator
-from restpy.validators.str import StrValidator
-from restpy.validators.required_field import RequiredFieldValidator
-from restpy.exceptions.base import RestPyException, RestPyRunnerException
+from restpy import RestPy, RestPySingleton, RESTpyResponse, RestPyURL     # client
+from restpy import RestPyAuthBasic, RestPyAuthOAuth2, RestPyAuthRawToken  # auth
+from restpy import DataTypeChoice, RequestMethodChoice                    # choices
+from restpy import NumberValidator, StrValidator                          # validators
+from restpy import RestPyIsSuccessResponse, RestPyValidatorException      # exceptions
+from restpy import classproperty, SingletonClass, SingletonMeta           # utils
 ```
+
+`restpy.__all__` lists the complete set. The per-module imports
+(`from restpy.validators.base import BaseValidator`, …) keep working.
 
 ## `RestPy` / `RestPySingleton`
 
@@ -142,4 +133,4 @@ Supports `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD` and `OPTIONS`.
 |---|---|---|
 | `SingletonMeta` | `utils/singleton_meta.py` | `__new__` that always reuses the same instance. |
 | `SingletonClass` | `utils/singleton_meta.py` | Adds `_is_init` so `__init__` runs only once. |
-| `classproperty` | `utils/classproperty.py` | Property decorator accessible from the class. |
+| `classproperty` | `utils/classproperty.py` | Property decorator accessible from the class. Not used internally; exported for client code. |
