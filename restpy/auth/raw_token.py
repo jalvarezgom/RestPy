@@ -1,4 +1,4 @@
-from auth.auth import RestPyAuthModule
+from restpy.auth.auth import RestPyAuthModule
 
 
 class RestPyAuthRawToken(RestPyAuthModule):

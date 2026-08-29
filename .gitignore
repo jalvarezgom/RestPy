@@ -2,7 +2,8 @@
 .pdm-python
 pdm.lock
 .venv
-
+issues.md
+limitations.md
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -1,6 +1,6 @@
 import numbers
 
-from validators.base import BaseValidator
+from restpy.validators.base import BaseValidator
 
 
 class StrValidator(BaseValidator):

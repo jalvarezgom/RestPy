@@ -1,7 +1,7 @@
 from http import HTTPStatus
 from typing import List
 
-from exceptions.base import RestPyRunnerException
+from restpy.exceptions.base import RestPyRunnerException
 
 
 class RestPyStatusCodeException(RestPyRunnerException):

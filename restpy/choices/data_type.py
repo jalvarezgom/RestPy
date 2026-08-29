@@ -2,7 +2,7 @@ import json
 
 import xmltodict
 
-from exceptions.request import RestPyResponseTypeException
+from restpy.exceptions.request import RestPyResponseTypeException
 
 
 class DataTypeChoice:
@@ -20,16 +20,13 @@ class DataTypeChoice:
 
     @staticmethod
     def parse_response(response_type, response):
-        if any(
-            [
-                response.status_code == 204,
-                not response.text,
-                response_type == DataTypeChoice.JSON and not response.text.startswith("{"),
-            ]
-        ):
+        if response.status_code == 204 or not response.text:
             return response.text
         elif response_type == DataTypeChoice.JSON:
-            return response.json()
+            try:
+                return response.json()
+            except ValueError:
+                return response.text
         elif response_type == DataTypeChoice.XML:
             return xmltodict.parse(response.text) if response.text else {}
         else:

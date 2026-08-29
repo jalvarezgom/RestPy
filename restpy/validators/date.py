@@ -1,4 +1,4 @@
-from validators.base import DatetimeValidator
+from restpy.validators.base import DatetimeValidator
 
 
 class DateYearMonthValidator(DatetimeValidator):

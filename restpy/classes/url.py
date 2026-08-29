@@ -3,9 +3,9 @@ from functools import cached_property
 from http import HTTPMethod
 from typing import Dict
 
-from choices.data_type import DataTypeChoice
-from classes.response import RESTpyResponse
-from validators.base import BaseValidator
+from restpy.choices.data_type import DataTypeChoice
+from restpy.classes.response import RESTpyResponse
+from restpy.validators.base import BaseValidator
 
 ALL_REQUEST_METHODS = [HTTPMethod.GET, HTTPMethod.POST, HTTPMethod.PUT, HTTPMethod.PATCH, HTTPMethod.DELETE]
 

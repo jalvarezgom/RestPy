@@ -2,7 +2,7 @@ import pytest
 
 from http import HTTPMethod
 
-from classes.url import RestPyURL
+from restpy import RestPyURL
 
 
 class TestRestPy:

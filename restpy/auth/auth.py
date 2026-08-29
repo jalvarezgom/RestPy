@@ -4,6 +4,8 @@ import logging
 class RestPyAuthModule:
     mode = None
 
+    REQUEST_TIMEOUT_SECONDS = 30
+
     authorization_key = "Authorization"
     authorization_value_format = "Bearer {token}"
     auth_headers = None

@@ -1,4 +1,4 @@
-from validators.base import BaseValidator
+from restpy.validators.base import BaseValidator
 
 
 class RequiredFieldValidator(BaseValidator):

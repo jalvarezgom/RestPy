@@ -1,8 +1,9 @@
 import json
+from http import HTTPMethod
 
-from auth.auth import RestPyAuthModule
-from choices.request_method import RequestMethodChoice
-from exceptions.auth import RestPyAuthException
+from restpy.auth.auth import RestPyAuthModule
+from restpy.choices.request_method import RequestMethodChoice
+from restpy.exceptions.auth import RestPyAuthException
 
 
 class RestPyAuthOAuth2(RestPyAuthModule):
@@ -43,8 +44,8 @@ class RestPyAuthOAuth2(RestPyAuthModule):
             self._token = self.load_oauth_token()
         else:
             self.logger.debug(f"[{self.name}] Refresh OAuth2 token")
-            refresh_response = RequestMethodChoice.request(RequestMethodChoice.POST)(
-                f"{self.oauth_token_url}", data=self._oauth2_refresh_credentials()
+            refresh_response = RequestMethodChoice.request(HTTPMethod.POST)(
+                f"{self.oauth_token_url}", data=self._oauth2_refresh_credentials(), timeout=self.REQUEST_TIMEOUT_SECONDS
             )
             if refresh_response.status_code != 200:
                 self.logger.error(f"[{self.name}] Refresh OAuth2 token failed - {refresh_response.status_code}")

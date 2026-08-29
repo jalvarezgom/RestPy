@@ -1,11 +1,14 @@
+import os
 from http import HTTPMethod
 
 import pytest
 
-from auth.raw_token import RestPyAuthRawToken
-from classes.restpy import RestPy
+from restpy import RestPy
+from restpy.auth.raw_token import RestPyAuthRawToken
 
-RAW_TOKEN = "RGAPI-bdbd11f6-b440-418c-8e85-e1f9c0378479"
+RAW_TOKEN = os.environ.get("RIOT_API_KEY")
+
+pytestmark = pytest.mark.skipif(not RAW_TOKEN, reason="RIOT_API_KEY no esta definida en el entorno")
 
 
 class RiotAPI(RestPy):

@@ -1,6 +1,6 @@
 import datetime
 
-from exceptions.validators import RestPyValidatorException
+from restpy.exceptions.validators import RestPyValidatorException
 
 
 class BaseValidator:

@@ -7,19 +7,17 @@ class RESTpyResponse:
     def __init__(self, response, data=None, errors=None):
         self._response = response
         self._data = data
-        if data:
-            self._parse_data(data)
+        self._processed_data = self._parse_data(data)
         self.errors = errors
 
     @property
     def data(self):
-        if not self._processed_data:
-            self._processed_data = self._parse_data(self._data) if self.response else None
         return self._processed_data
 
     def _parse_data(self, data):
-        if self.status_code == 200:
-            self._processed_data = data
+        if self.response is None or data is None or data == "":
+            return None
+        return data
 
     @property
     def url(self):

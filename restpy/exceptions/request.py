@@ -1,4 +1,4 @@
-from exceptions.base import RestPyException, RestPyRunnerException
+from restpy.exceptions.base import RestPyException, RestPyRunnerException
 
 
 class RestPyURLNotFoundException(RestPyException):

@@ -1,4 +1,4 @@
-from exceptions.base import RestPyException
+from restpy.exceptions.base import RestPyException
 
 
 class RestPyAuthException(RestPyException):
