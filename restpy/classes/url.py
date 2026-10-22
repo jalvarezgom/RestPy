@@ -33,38 +33,33 @@ class RESTpyField:
 
 
 class RestPyURL:
-    _used_names = set()
-
     def __init__(
         self,
         name: str = None,
         url: str = "",
-        request_methods: list[HTTPMethod] = ALL_REQUEST_METHODS,
+        request_methods: list[HTTPMethod] = None,
         request_data_type: DataTypeChoice = None,
-        url_params: list = [],
-        query_params: list = [],
-        data_params: list = [],
+        url_params: list = None,
+        query_params: list = None,
+        data_params: list = None,
         response_data_type: DataTypeChoice = None,
         response_manager: RESTpyResponse = None,
     ):
-        if name in self._used_names:
-            raise ValueError(f"[RestPyURL] Name {name} is already used.")
-        else:
-            self._used_names.add(name)
+        # Name uniqueness is owned by the client: see RestPyModule.register().
         self.name: str = name
         self.url: str = url
-        self.request_methods: list[HTTPMethod] = request_methods
+        self.request_methods: list[HTTPMethod] = list(request_methods) if request_methods else list(ALL_REQUEST_METHODS)
         self.request_data_type: DataTypeChoice = request_data_type
         self._fields: Dict[str, RESTpyField] = {}
         self.response_data_type: DataTypeChoice = response_data_type
         self._response_manager: RESTpyResponse = response_manager
-        for url_param in url_params:
+        for url_param in url_params or []:
             field = RESTpyField(where_data=RestPyFieldWhereData.URL_PARAMS, **url_param)
             self._fields[field.name] = field
-        for query_param in query_params:
+        for query_param in query_params or []:
             field = RESTpyField(where_data=RestPyFieldWhereData.QUERY_PARAMS, **query_param)
             self._fields[field.name] = field
-        for dat in data_params:
+        for dat in data_params or []:
             field = RESTpyField(where_data=RestPyFieldWhereData.BODY, **dat)
             self._fields[field.name] = field
 

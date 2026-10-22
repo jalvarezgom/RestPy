@@ -33,8 +33,8 @@ Ruff configuration in `pyproject.toml`:
 | `select` | `E4`, `E7`, `E9`, `F` |
 | `quote-style` | `double` |
 
-Note: `target-version` is `py311` while `requires-python` is `==3.12.*`; the code uses
-`http.HTTPMethod` and `enum.StrEnum`, both available from 3.11 onwards.
+Note: `target-version` matches `requires-python` (`py312`). `select` includes `B`
+(flake8-bugbear) so mutable default arguments are caught by the linter.
 
 ## Tests
 

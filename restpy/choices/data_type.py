@@ -1,11 +1,12 @@
 import json
+from enum import StrEnum
 
 import xmltodict
 
 from restpy.exceptions.request import RestPyResponseTypeException
 
 
-class DataTypeChoice:
+class DataTypeChoice(StrEnum):
     JSON = "json"
     XML = "xml"
     TEXT = "text"

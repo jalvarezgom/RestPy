@@ -70,16 +70,16 @@ api.remove_exception_valid_status_runner(MyStatusException)
 api.remove_exception_valid_response_runner(MyPayloadException)
 ```
 
-Both accept classes derived from `RestPyRunnerException` (see
-[Exceptions](exceptions.md)).
-
-> `add_*` checks with `isinstance(exception_runner, RestPyRunnerException)`, which
-> requires an **instance**, while `_validator_runner()` calls `validate()` as a class
-> method. See [RP-005](issues.md#rp-005).
+Both take the exception **class**, not an instance: `_validator_runner()` calls
+`validate()` on it as a class method, exactly as it does with the defaults. Anything that
+is not a `RestPyRunnerException` subclass is rejected with `ValueError`.
 
 ## `DataTypeChoice`
 
-Constants: `JSON = "json"`, `XML = "xml"`, `TEXT = "text"`, `DICT = "dict"`.
+A `StrEnum`: `JSON = "json"`, `XML = "xml"`, `TEXT = "text"`, `DICT = "dict"`. Members
+compare equal to their string value, so `DataTypeChoice.JSON == "json"` holds and plain
+strings are still accepted by `register()` — anything outside the four values raises
+`ValueError` at registration time.
 
 ### Request serialization — `parse_request(type, data)`
 
@@ -106,7 +106,7 @@ response = api.get("me", url_params={"region": "europe"})
 
 response.status_code  # HTTP status, or None if no request was made
 response.url          # final resolved URL, or None
-response.data         # parsed body (only populated on status 200)
+response.data         # parsed body, also on 4xx/5xx
 response.errors       # list of exceptions, or None
 response.response     # the raw `requests` Response object
 ```

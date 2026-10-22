@@ -8,12 +8,12 @@ class BaseValidator:
     _error_message = None
 
     @classmethod
-    def error_message(cls, error_fields={}):
-        return f"{cls._error_message}".format(**error_fields)
+    def error_message(cls, error_fields=None):
+        return f"{cls._error_message}".format(**(error_fields or {}))
 
     @classmethod
-    def get_error_message(cls, error_fields={}, error_msg=None):
-        return f"{cls.__name__} {cls._base_message} {error_msg}".format(**error_fields)
+    def get_error_message(cls, error_fields=None, error_msg=None):
+        return f"{cls.__name__} {cls._base_message} {error_msg}".format(**(error_fields or {}))
 
     @classmethod
     def validate(cls, field_name, original_value):
