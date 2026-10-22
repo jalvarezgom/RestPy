@@ -18,7 +18,7 @@ restpy/
 │   └── disabled.py      # RestPyAuthDisabled — no authentication
 ├── choices/
 │   ├── data_type.py     # DataTypeChoice — JSON, XML, TEXT, DICT serialization/parsing
-│   └── request_method.py# RequestMethodChoice — HTTPMethod → `requests` function
+│   └── request_method.py# RequestMethodChoice — HTTPMethod → verb, bound to the client's Session
 ├── validators/
 │   ├── base.py          # BaseValidator, ChoiceValidator, DatetimeValidator, IgnoreCaseValidator
 │   ├── date.py          # Preconfigured date validators
