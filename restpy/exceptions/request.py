@@ -5,6 +5,10 @@ class RestPyURLNotFoundException(RestPyException):
     base_message = "URL not found"
 
 
+class RestPyConnectionException(RestPyException):
+    base_message = "Connection error"
+
+
 class RestPyResponseTypeException(RestPyException): ...
 
 

@@ -1,4 +1,5 @@
 import json
+import os
 from http import HTTPMethod
 
 from restpy.auth.auth import RestPyAuthModule
@@ -35,8 +36,11 @@ class RestPyAuthOAuth2(RestPyAuthModule):
     def dump_oauth_token(self, oauth_token):
         if not self.oauth_filepath:
             raise RestPyAuthException(f"[{self.name}] oauth_filepath is required")
-        with open(self.oauth_filepath, "w") as f:
+        # Write-then-rename so a crash cannot leave a truncated token file behind.
+        tmp_path = f"{self.oauth_filepath}.tmp"
+        with open(tmp_path, "w") as f:
             json.dump(oauth_token, f)
+        os.replace(tmp_path, self.oauth_filepath)
 
     def login(self, refresh=False):
         if not refresh:
@@ -50,11 +54,9 @@ class RestPyAuthOAuth2(RestPyAuthModule):
             if refresh_response.status_code != 200:
                 self.logger.error(f"[{self.name}] Refresh OAuth2 token failed - {refresh_response.status_code}")
                 return False
-            self._token = refresh_response.json()
-            self.logger.debug(f"[{self.name}] Refresh OAuth2 token - Value: {self.token}")
+            self._token = {**(self._token or {}), **refresh_response.json()}
             self.dump_oauth_token(self._token)
             self.logger.debug(f"[{self.name}] Refresh OAuth2 token - JSON updated")
-        self.logger.debug(f"[{self.name}] OAuth token: {self.token}")
         return self._token is not None
 
     def _oauth2_refresh_credentials(self, **xtra_params):

@@ -67,16 +67,16 @@ class DatetimeValidator(BaseValidator):
 
     @classmethod
     def _run_validation(cls, value):
+        error = (None, {"format_date": cls.format_date})
         if isinstance(value, datetime.datetime):
-            value = datetime.datetime.strftime(value, cls.format_date) if cls.to_string else value
-        else:
-            if isinstance(value, str) and not cls.to_string:
-                return (None, {"to_string": cls.to_string})
-            try:
-                value = datetime.datetime.strptime(value, cls.format_date)
-            except Exception:
-                return (None, {"format_date": cls.format_date})
-        return (value, {})
+            return (datetime.datetime.strftime(value, cls.format_date) if cls.to_string else value, {})
+        if not isinstance(value, str):
+            return error
+        try:
+            parsed = datetime.datetime.strptime(value, cls.format_date) if cls.format_date else datetime.datetime.fromisoformat(value)
+        except ValueError:
+            return error
+        return (value if cls.to_string else parsed, {})
 
 
 class IgnoreCaseValidator(BaseValidator):

@@ -12,7 +12,7 @@ from restpy.choices.data_type import DataTypeChoice
 from restpy.classes.response import RESTpyResponse
 from restpy.exceptions.auth import RestPyAuthException
 from restpy.exceptions.base import RestPyRunnerException
-from restpy.exceptions.request import RestPyRequestMethodException, RestPyURLNotFoundException
+from restpy.exceptions.request import RestPyConnectionException, RestPyRequestMethodException, RestPyURLNotFoundException
 from restpy.exceptions.status_codes import (
     RestPyLoginException,
     RestPyIsSuccessResponse,
@@ -138,6 +138,7 @@ class RestPyModule:
                 raise RestPyLoginException(self.name)
             if not status:
                 self.logger.error(f"{RestPyLoginException(self.name)} | Login failed, a refresh is needed ")
+                return status
         self.auth_module.generate_auth_headers()
         return status
 
@@ -294,7 +295,12 @@ class RestPyModule:
             self.logger.error(f"[{self.name}] Error in request fields - {field_errors}")
             return self._prepare_response(rp_url, None, field_errors)
 
-        status = self.login()
+        try:
+            status = self.login()
+        except requests.RequestException as exc:
+            return self._prepare_response(rp_url, None, [self._network_error(exc)])
+        if not status:
+            return self._prepare_response(rp_url, None, [RestPyLoginException(self.name)])
         response, counter_request, is_refreshed, timeout_exception = None, 0, False, None
         while counter_request < self.RETRIES_URL:
             try:
@@ -307,10 +313,18 @@ class RestPyModule:
                 if counter_request < self.RETRIES_URL:
                     time.sleep(self.RETRIES_TIMEOUT_SECONDS)
                 continue
+            except requests.RequestException as exc:
+                self.logger.error(f"[{self.name}] Request failed - {exc}")
+                return self._prepare_response(rp_url, None, [self._network_error(exc)])
             counter_request += 1
             if self._check_login_action(response) and not is_refreshed:
                 self.logger.info(f"[{self.name}] Login refreshed")
-                is_refreshed, status = True, self.login(refresh=True)
+                try:
+                    is_refreshed, status = True, self.login(refresh=True)
+                except RestPyLoginException as exc:
+                    return self._prepare_response(rp_url, response, [exc])
+                except requests.RequestException as exc:
+                    return self._prepare_response(rp_url, response, [self._network_error(exc)])
                 self.logger.debug(f"[{self.name}] Retried login - Result: {status}")
                 continue
             if self._check_retry_action_and_timeout(response):
@@ -329,6 +343,12 @@ class RestPyModule:
         if field_errors:
             return self._prepare_response(rp_url, response, field_errors)
         return self._prepare_response(rp_url, response, None)
+
+    @staticmethod
+    def _network_error(exc):
+        if isinstance(exc, requests.Timeout):
+            return RESTpyTimeOutException(str(exc))
+        return RestPyConnectionException(str(exc))
 
     def _send_request(self, request_method, rp_url, response, url_params, query_params, data_params, **xtra_params):
         # Prepare request data
@@ -350,7 +370,7 @@ class RestPyModule:
             # Add custom data to post url
             nurl, nparams = self._apply_custom_data_to_post_url(request_method, rp_url, nurl, nparams, **xtra_params)
 
-            self.logger.debug(f"[{self.name}] {request_method} {nurl} {nparams} {ndata}")
+            self.logger.debug(f"[{self.name}] {request_method} {nurl}")
             return RequestMethodChoice.request(request_method, session=self.session)(
                 nurl, params=query_params, data=ndata, headers=headers, cookies=self.auth_module.cookies, timeout=self.REQUEST_TIMEOUT_SECONDS
             )

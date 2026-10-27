@@ -53,5 +53,5 @@ class RestPyAuthBasic(RestPyAuthModule):
         self.logger.debug(f"[{self.name}] Login action - Response: {response.status_code}")
         if response.status_code == 200:
             self._token = DataTypeChoice.get_token(response, self.get_token_method, self.get_token_key)
-            self.logger.debug(f"[{self.name}] Login action - Token: {self.token}")
+            self.logger.debug(f"[{self.name}] Login action - Token received")
         return response.status_code == 200

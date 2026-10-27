@@ -47,13 +47,22 @@ class FakeTransport:
 
     def request(self, method, session=None):
         # `session` is accepted (and ignored) so the fake matches RequestMethodChoice.request.
-        def _send(url, params=None, data=None, headers=None, cookies=None, timeout=None):
+        def _send(url, params=None, data=None, headers=None, cookies=None, timeout=None, json=None):
             self.calls.append(
                 SimpleNamespace(
-                    method=method, url=url, params=dict(params or {}), data=data, headers=dict(headers or {}), cookies=cookies, timeout=timeout
+                    method=method,
+                    url=url,
+                    params=dict(params or {}),
+                    data=data,
+                    headers=dict(headers or {}),
+                    cookies=cookies,
+                    timeout=timeout,
+                    json=json,
                 )
             )
             response = self._queue.pop(0) if self._queue else self.default_response
+            if isinstance(response, Exception):
+                raise response
             response.url = f"{url}?{urlencode(params)}" if params else url
             response.request = SimpleNamespace(url=response.url)
             return response
