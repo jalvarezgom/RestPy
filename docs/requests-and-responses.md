@@ -29,7 +29,7 @@ Configurable as `RestPyModule` class attributes:
 
 | Attribute | Default | Description |
 |---|---|---|
-| `RETRIES_URL` | `3` | Maximum attempts per request. |
+| `RETRIES_URL` | `3` | Maximum attempts per request. The request re-sent after a login refresh does not count. |
 | `RETRIES_TIMEOUT_SECONDS` | `1` | Delay between attempts when the status is a timeout. |
 | `RETRIES_TIMEOUT_STATUS_CODES` | `[408, 504]` | Statuses that trigger a retry **with** a delay. |
 | `RETRIES_STATUS_CODES` | `[408, 504]` | Statuses that trigger a retry. |

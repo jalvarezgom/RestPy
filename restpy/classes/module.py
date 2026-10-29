@@ -339,6 +339,8 @@ class RestPyModule:
                 except requests.RequestException as exc:
                     return self._prepare_response(rp_url, response, [self._network_error(exc)])
                 self.logger.debug(f"[{self.name}] Retried login - Result: {status}")
+                # The refresh only happens once, so giving the attempt back cannot loop forever
+                counter_request -= 1
                 continue
             if self._check_retry_action_and_timeout(response):
                 time.sleep(self.RETRIES_TIMEOUT_SECONDS)

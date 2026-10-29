@@ -332,3 +332,27 @@ class TestResponseDataTypes:
     def test_dict_is_still_valid_as_request_type(self):
         api = RestPy(base_url="https://hardening.test", auth_action=RestPyAuthDisabled())
         api.register(name="doc", url="/doc", request_methods=[HTTPMethod.POST], request_data_type=DataTypeChoice.DICT)
+
+
+class TestLoginRefreshDoesNotConsumeAnAttempt:
+    """RP-037: the request re-sent after a 401 refresh does not count against RETRIES_URL."""
+
+    def test_refresh_is_retried_with_a_single_attempt(self, transport):
+        transport.queue(FakeResponse(401), FakeResponse(200, {"ok": True}))
+        auth = CountingAuth()
+        api = make_api(auth)
+        api.RETRIES_URL = 1
+        response = api.get("ping")
+        assert response.status_code == 200
+        assert auth.logins == [False, True]
+        assert len(transport.calls) == 2
+
+    def test_refresh_happens_only_once(self, transport):
+        transport.queue(FakeResponse(401), FakeResponse(401), FakeResponse(401))
+        auth = CountingAuth()
+        api = make_api(auth)
+        api.RETRIES_URL = 1
+        response = api.get("ping")
+        assert response.status_code == 401
+        assert auth.logins == [False, True]
+        assert len(transport.calls) == 2
