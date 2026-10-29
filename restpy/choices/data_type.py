@@ -1,5 +1,6 @@
 import json
 from enum import StrEnum
+from xml.parsers.expat import ExpatError
 
 import xmltodict
 
@@ -29,7 +30,12 @@ class DataTypeChoice(StrEnum):
             except ValueError:
                 return response.text
         elif response_type == DataTypeChoice.XML:
-            return xmltodict.parse(response.text) if response.text else {}
+            try:
+                return xmltodict.parse(response.text)
+            except ExpatError:
+                return response.text
+        elif response_type == DataTypeChoice.TEXT:
+            return response.text
         else:
             raise RestPyResponseTypeException("Response type not supported")
 

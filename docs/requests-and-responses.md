@@ -58,8 +58,7 @@ If the status is not in the list, the `_EXCEPTION_VALID_STATUS_RUNNER` runners f
 (`[RestPyIsSuccessResponse]` by default) and the first exception produced is returned in
 `RESTpyResponse.errors`.
 
-In addition, if `response_data_type` is `JSON` and the body does not start with `{`, the
-status is rewritten to `204 NO_CONTENT` and a log entry is emitted.
+The status code the server returned is never rewritten.
 
 ## Response validators
 
@@ -90,14 +89,16 @@ strings are still accepted by `register()` — anything outside the four values 
 
 ### Response parsing — `parse_response(type, response)`
 
-Returns `response.text` as-is when the status is `204`, when the body is empty, or when
-the type is `JSON` and the body does not start with `{`. Otherwise:
+Returns `response.text` as-is when the status is `204` or the body is empty. Otherwise:
 
 | Type | Result |
 |---|---|
-| `JSON` | `response.json()` |
-| `XML` | `xmltodict.parse(response.text)` (or `{}` for an empty body) |
-| Other | raises `RestPyResponseTypeException` |
+| `JSON` | `response.json()`; `response.text` if the body is not valid JSON |
+| `XML` | `xmltodict.parse(response.text)`; `response.text` if the body is not valid XML |
+| `TEXT` | `response.text` |
+
+`DataTypeChoice.DICT` only describes how a **request** body is sent, so it is not a valid
+`response_data_type`: `register()` rejects it with `ValueError`.
 
 ## `RESTpyResponse`
 

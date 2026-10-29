@@ -35,7 +35,8 @@ Registration errors (all `ValueError`):
 - `url` missing or not a `str`
 - `request_methods` missing, not a list, or containing non-`HTTPMethod` items
 - `url_params` / `query_params` / `data_params` containing non-`dict` items
-- `request_data_type` / `response_data_type` that are not `str`
+- `request_data_type` / `response_data_type` that are not a `DataTypeChoice` member
+- `response_data_type=DataTypeChoice.DICT` (it only applies to requests)
 - `response_manager` passed as an *instance* rather than a *class*
 - `name` already registered on this client
 
@@ -116,11 +117,11 @@ with `RestPyURLNotFoundException` in `errors`.
 
 You can also inspect the `api.registered_urls` dictionary directly.
 
-## Path parameter substitution
 URL parameters are substituted whenever the value is not `None`, so `0` and `""` are valid.
 A placeholder left unresolved, or a `url_params` key that is not a declared field, returns
 `RestPyURLParamsException` in `errors` without sending the request.
 
+## Path parameter substitution
 
 `_generate_url_params_url()` walks the endpoint's `url_fields`, pulls the values from the
 `url_params` passed to the call and applies `url.format(**values)`. Consumed values are

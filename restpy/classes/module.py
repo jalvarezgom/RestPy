@@ -212,6 +212,8 @@ class RestPyModule:
         if not response_data_type:
             response_data_type = self.default_response_data_type
         response_data_type = self._validate_data_type(response_data_type, "response_data_type")
+        if response_data_type == DataTypeChoice.DICT:
+            raise ValueError("response_data_type cannot be DataTypeChoice.DICT: it only describes how a request body is sent.")
         if response_manager is None:
             response_manager = self.default_response_manager
         if type(response_manager) is RESTpyResponse:

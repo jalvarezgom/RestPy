@@ -6,7 +6,7 @@ from http import HTTPMethod
 import pytest
 import requests
 
-from restpy import RESTpyField, RestPy, RestPyAuthBasic, RestPyAuthDisabled, RestPyAuthModule, RestPyAuthOAuth2
+from restpy import DataTypeChoice, RESTpyField, RestPy, RestPyAuthBasic, RestPyAuthDisabled, RestPyAuthModule, RestPyAuthOAuth2
 from restpy.exceptions import RESTpyTimeOutException, RestPyConnectionException, RestPyLoginException, RestPyURLParamsException, RestPyValidatorException
 from restpy.classes.url import RestPyFieldWhereData
 from restpy.validators.required_field import RequiredFieldValidator
@@ -298,3 +298,37 @@ class TestRequiredFalsyValues:
         api.register(name="page", url="/page", request_methods=[HTTPMethod.GET], query_params=[{"name": "offset", "is_required": True}])
         api.get("page", query_params={"offset": 0})
         assert transport.last_call.params == {"offset": 0}
+
+
+class TestResponseDataTypes:
+    """RP-036: TEXT returns the body, bad XML falls back to the text, DICT is not a response type."""
+
+    @staticmethod
+    def make_api(data_type):
+        api = RestPy(base_url="https://hardening.test", auth_action=RestPyAuthDisabled())
+        api.register(name="doc", url="/doc", request_methods=[HTTPMethod.GET], response_data_type=data_type)
+        return api
+
+    def test_text_returns_the_body(self, transport):
+        transport.queue(FakeResponse(200, text="plain body"))
+        response = self.make_api(DataTypeChoice.TEXT).get("doc")
+        assert response.data == "plain body"
+        assert response.errors is None
+
+    def test_valid_xml_is_parsed(self, transport):
+        transport.queue(FakeResponse(200, text="<a><b>1</b></a>"))
+        assert self.make_api(DataTypeChoice.XML).get("doc").data == {"a": {"b": "1"}}
+
+    def test_invalid_xml_falls_back_to_text(self, transport):
+        transport.queue(FakeResponse(200, text="<html><body>oops"))
+        response = self.make_api(DataTypeChoice.XML).get("doc")
+        assert response.data == "<html><body>oops"
+        assert response.status_code == 200
+
+    def test_dict_is_rejected_as_response_type(self):
+        with pytest.raises(ValueError, match="DICT"):
+            self.make_api(DataTypeChoice.DICT)
+
+    def test_dict_is_still_valid_as_request_type(self):
+        api = RestPy(base_url="https://hardening.test", auth_action=RestPyAuthDisabled())
+        api.register(name="doc", url="/doc", request_methods=[HTTPMethod.POST], request_data_type=DataTypeChoice.DICT)
