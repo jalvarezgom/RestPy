@@ -17,18 +17,21 @@ class RestPyFieldWhereData(StrEnum):
 
 
 class RESTpyField:
-    def __init__(self, *, where_data: RestPyFieldWhereData, name: str, is_required=False, validator=None, **xtra_params):
+    def __init__(self, *, where_data: RestPyFieldWhereData, name: str, is_required=False, allow_empty=False, validator=None, **xtra_params):
         if not where_data:
             raise ValueError("where_data is required.")
         if not name:
             raise ValueError("name is required.")
         if is_required and not isinstance(is_required, bool):
             raise ValueError("is_required must be a boolean.")
+        if not isinstance(allow_empty, bool):
+            raise ValueError("allow_empty must be a boolean.")
         if validator and not isinstance(validator, BaseValidator):
             raise ValueError("validator must be an instance of BaseValidator.")
         self.where_data = where_data
         self.name = name
         self.required = is_required
+        self.allow_empty = allow_empty
         self.validator = validator
 
 

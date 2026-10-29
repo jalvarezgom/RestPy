@@ -101,3 +101,7 @@ value, error = RequiredFieldValidator.validate(rp_field, url_params)
 ```
 
 If the field is not required it returns `(None, None)` without checking anything.
+
+A required field is missing when its key is absent, its value is `None`, or its value is
+`""` (unless the field is declared with `allow_empty=True`). Any other value passes,
+including the falsy `0`, `0.0`, `False`, `[]` and `{}`.

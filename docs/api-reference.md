@@ -105,10 +105,10 @@ Members: `name`, `url`, `request_methods`, `request_data_type`, `response_data_t
 ## `RESTpyField`
 
 ```python
-RESTpyField(*, where_data: RestPyFieldWhereData, name: str, is_required=False, validator=None, **xtra_params)
+RESTpyField(*, where_data: RestPyFieldWhereData, name: str, is_required=False, allow_empty=False, validator=None, **xtra_params)
 ```
 
-Members: `where_data`, `name`, `required`, `validator`.
+Members: `where_data`, `name`, `required`, `allow_empty`, `validator`.
 
 ## `RESTpyResponse`
 

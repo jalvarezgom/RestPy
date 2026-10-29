@@ -6,9 +6,10 @@ from http import HTTPMethod
 import pytest
 import requests
 
-from restpy import RestPy, RestPyAuthBasic, RestPyAuthDisabled, RestPyAuthModule, RestPyAuthOAuth2
+from restpy import RESTpyField, RestPy, RestPyAuthBasic, RestPyAuthDisabled, RestPyAuthModule, RestPyAuthOAuth2
 from restpy.exceptions import RESTpyTimeOutException, RestPyConnectionException, RestPyLoginException, RestPyURLParamsException, RestPyValidatorException
 from restpy.classes.url import RestPyFieldWhereData
+from restpy.validators.required_field import RequiredFieldValidator
 from restpy.validators import DatetimeObjectValidator, DateYearMonthDayValidator
 from tests.conftest import FakeResponse
 
@@ -261,3 +262,39 @@ class TestBasicAuthCredentialsPlacement:
         assert "query string" in caplog.text
         assert auth.login()
         assert transport.last_call.params == {"username": "u", "password": "p"}
+
+
+class TestRequiredFalsyValues:
+    """RP-034: only an absent key, `None` and (by default) `""` count as missing."""
+
+    @staticmethod
+    def make_field(**kwargs):
+        return RESTpyField(where_data=RestPyFieldWhereData.BODY, name="f", is_required=True, **kwargs)
+
+    @pytest.mark.parametrize("value", [0, 0.0, False, [], {}])
+    def test_falsy_values_pass(self, value):
+        _, error = RequiredFieldValidator.validate(self.make_field(), {"f": value})
+        assert error is None
+
+    @pytest.mark.parametrize("data", [{}, {"f": None}, {"f": ""}])
+    def test_missing_values_fail(self, data):
+        _, error = RequiredFieldValidator.validate(self.make_field(), data)
+        assert error is not None
+
+    def test_empty_string_passes_with_allow_empty(self):
+        _, error = RequiredFieldValidator.validate(self.make_field(allow_empty=True), {"f": ""})
+        assert error is None
+
+    def test_allow_empty_still_rejects_none(self):
+        _, error = RequiredFieldValidator.validate(self.make_field(allow_empty=True), {"f": None})
+        assert error is not None
+
+    def test_allow_empty_must_be_a_bool(self):
+        with pytest.raises(ValueError):
+            self.make_field(allow_empty="yes")
+
+    def test_zero_is_sent_end_to_end(self, transport):
+        api = RestPy(base_url="https://hardening.test", auth_action=RestPyAuthDisabled())
+        api.register(name="page", url="/page", request_methods=[HTTPMethod.GET], query_params=[{"name": "offset", "is_required": True}])
+        api.get("page", query_params={"offset": 0})
+        assert transport.last_call.params == {"offset": 0}

@@ -12,7 +12,7 @@ class RequiredFieldValidator(BaseValidator):
         value = data.get(rp_field.name, None)
 
         (error_fields, error_msg) = {}, None
-        if not value:
+        if value is None or (value == "" and not rp_field.allow_empty):
             error_fields["field_name"] = rp_field.name
             error_fields["value"] = value
             error_msg = cls.get_error_message(error_fields, error_msg=cls.error_message())
