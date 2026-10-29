@@ -29,6 +29,8 @@ class RestPyAuthBasic(RestPyAuthModule):
     ):
         self.auth_url = auth_url
         self.send_auth_in_body = send_auth_in_body
+        if not send_auth_in_body:
+            self.logger.warning(f"[{self.name}] Credentials will be sent in the query string: they can end up in server logs, proxies and history")
         self.username = username
         self.password = password
         self.get_token_method = get_token_method

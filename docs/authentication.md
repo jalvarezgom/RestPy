@@ -67,13 +67,18 @@ from restpy.auth.basic import RestPyAuthBasic
 
 auth = RestPyAuthBasic(
     auth_url="https://api.example.com/login",
-    send_auth_in_body=True,   # True → credentials in the JSON body; False → in query params
+    send_auth_in_body=True,   # required, no default: True → JSON body; False → query params
     username="user",
     password="secret",
     get_token_method="json",  # response attribute/method to read the token from
     get_token_key="token",    # key inside the JSON
 )
 ```
+
+**Warning:** with `send_auth_in_body=False` the username and password travel in the URL
+query string, where they can end up in server logs, proxies and browser history. `send_auth_in_body` is
+required and has no default, so you must choose where the credentials go; the library logs a
+warning when you pick the query string.
 
 `get_token_method` is the name of an attribute on the `requests` response. With `"json"`
 the library calls `response.json()` and reads `get_token_key`; with `"text"` it takes

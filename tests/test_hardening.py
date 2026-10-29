@@ -237,3 +237,27 @@ class TestSameNameFields:
     def test_both_present_sends_request(self, api, transport):
         api.post("item", url_params={"id": 1}, data_params={"id": 2})
         assert transport.last_call.url == "https://hardening.test/items/1"
+
+
+class TestBasicAuthCredentialsPlacement:
+    """RP-033: the user must choose explicitly; the query string option warns."""
+
+    LOGIN = "https://hardening.test/login"
+
+    def test_choice_is_required(self):
+        with pytest.raises(TypeError):
+            RestPyAuthBasic(auth_url=self.LOGIN, username="u", password="p")
+
+    def test_body_sends_no_query_params(self, transport):
+        transport.queue(FakeResponse(200, {"token": "t"}))
+        auth = RestPyAuthBasic(auth_url=self.LOGIN, username="u", password="p", send_auth_in_body=True)
+        assert auth.login()
+        assert transport.last_call.params == {}
+
+    def test_query_string_warns(self, transport, caplog):
+        caplog.set_level(logging.WARNING)
+        transport.queue(FakeResponse(200, {"token": "t"}))
+        auth = RestPyAuthBasic(auth_url=self.LOGIN, username="u", password="p", send_auth_in_body=False)
+        assert "query string" in caplog.text
+        assert auth.login()
+        assert transport.last_call.params == {"username": "u", "password": "p"}
