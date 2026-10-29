@@ -117,6 +117,10 @@ with `RestPyURLNotFoundException` in `errors`.
 You can also inspect the `api.registered_urls` dictionary directly.
 
 ## Path parameter substitution
+URL parameters are substituted whenever the value is not `None`, so `0` and `""` are valid.
+A placeholder left unresolved, or a `url_params` key that is not a declared field, returns
+`RestPyURLParamsException` in `errors` without sending the request.
+
 
 `_generate_url_params_url()` walks the endpoint's `url_fields`, pulls the values from the
 `url_params` passed to the call and applies `url.format(**values)`. Consumed values are

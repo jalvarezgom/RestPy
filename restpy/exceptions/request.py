@@ -9,6 +9,10 @@ class RestPyConnectionException(RestPyException):
     base_message = "Connection error"
 
 
+class RestPyURLParamsException(RestPyException):
+    base_message = "Invalid URL parameters"
+
+
 class RestPyResponseTypeException(RestPyException): ...
 
 

@@ -7,7 +7,7 @@ import pytest
 import requests
 
 from restpy import RestPy, RestPyAuthBasic, RestPyAuthDisabled, RestPyAuthModule, RestPyAuthOAuth2
-from restpy.exceptions import RESTpyTimeOutException, RestPyConnectionException, RestPyLoginException
+from restpy.exceptions import RESTpyTimeOutException, RestPyConnectionException, RestPyLoginException, RestPyURLParamsException
 from restpy.validators import DatetimeObjectValidator, DateYearMonthDayValidator
 from tests.conftest import FakeResponse
 
@@ -174,3 +174,28 @@ class TestForbiddenDoesNotRefresh:
         auth = CountingAuth()
         make_api(auth).get("ping")
         assert auth.logins == [False, True]
+
+
+class TestURLParams:
+    """RP-030: falsy values are substituted; unresolved or undeclared params are errors."""
+
+    @pytest.fixture
+    def api(self):
+        api = RestPy(base_url="https://hardening.test", auth_action=RestPyAuthDisabled())
+        api.register(name="item", url="/items/{id}", request_methods=[HTTPMethod.GET], url_params=[{"name": "id", "is_required": False}])
+        return api
+
+    @pytest.mark.parametrize("value", [0, ""])
+    def test_falsy_value_is_substituted(self, api, transport, value):
+        api.get("item", url_params={"id": value})
+        assert transport.last_call.url == f"https://hardening.test/items/{value}"
+
+    def test_unresolved_placeholder_is_an_error(self, api, transport):
+        response = api.get("item")
+        assert isinstance(response.errors[0], RestPyURLParamsException)
+        assert transport.calls == []
+
+    def test_undeclared_param_is_an_error(self, api, transport):
+        response = api.get("item", url_params={"id": 1, "other": 2})
+        assert isinstance(response.errors[0], RestPyURLParamsException)
+        assert transport.calls == []

@@ -34,6 +34,7 @@ from restpy.exceptions import (
     RestPyRunnerException,
     RestPyStatusCodeException,
     RestPyURLNotFoundException,
+    RestPyURLParamsException,
     RestPyValidatorException,
 )
 from restpy.utils import SingletonClass, SingletonMeta, classproperty
@@ -80,6 +81,7 @@ __all__ = [
     "RestPyRequestMethodException",
     "RestPyResponseTypeException",
     "RestPyURLNotFoundException",
+    "RestPyURLParamsException",
     "RestPyValidatorException",
     "RestPyIsValidStatusResponse",
     "RestPyIsInformationalResponse",

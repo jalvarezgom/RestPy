@@ -1,6 +1,12 @@
 from restpy.exceptions.auth import RestPyAuthException
 from restpy.exceptions.base import RestPyException, RestPyRunnerException
-from restpy.exceptions.request import RestPyConnectionException, RestPyRequestMethodException, RestPyResponseTypeException, RestPyURLNotFoundException
+from restpy.exceptions.request import (
+    RestPyConnectionException,
+    RestPyRequestMethodException,
+    RestPyResponseTypeException,
+    RestPyURLNotFoundException,
+    RestPyURLParamsException,
+)
 from restpy.exceptions.status_codes import (
     RESTpyTimeOutException,
     RestPyForbiddenException,
@@ -25,6 +31,7 @@ __all__ = [
     "RestPyRequestMethodException",
     "RestPyResponseTypeException",
     "RestPyURLNotFoundException",
+    "RestPyURLParamsException",
     "RESTpyTimeOutException",
     "RestPyForbiddenException",
     "RestPyInternalServerErrorException",

@@ -1,4 +1,5 @@
 import logging
+import string
 import time
 from http import HTTPStatus, HTTPMethod
 from logging import Logger
@@ -12,7 +13,7 @@ from restpy.choices.data_type import DataTypeChoice
 from restpy.classes.response import RESTpyResponse
 from restpy.exceptions.auth import RestPyAuthException
 from restpy.exceptions.base import RestPyRunnerException
-from restpy.exceptions.request import RestPyConnectionException, RestPyRequestMethodException, RestPyURLNotFoundException
+from restpy.exceptions.request import RestPyConnectionException, RestPyRequestMethodException, RestPyURLNotFoundException, RestPyURLParamsException
 from restpy.exceptions.status_codes import (
     RestPyLoginException,
     RestPyIsSuccessResponse,
@@ -21,6 +22,13 @@ from restpy.exceptions.status_codes import (
 )
 from restpy.choices.request_method import RequestMethodChoice
 from restpy.validators.required_field import RequiredFieldValidator
+
+
+class _KeepPlaceholders(dict):
+    """`str.format_map` mapping that leaves unknown placeholders untouched."""
+
+    def __missing__(self, key):
+        return "{" + key + "}"
 
 
 class RestPyModule:
@@ -313,6 +321,9 @@ class RestPyModule:
                 if counter_request < self.RETRIES_URL:
                     time.sleep(self.RETRIES_TIMEOUT_SECONDS)
                 continue
+            except RestPyURLParamsException as exc:
+                self.logger.error(f"[{self.name}] Error in URL params - {exc}")
+                return self._prepare_response(rp_url, None, [exc])
             except requests.RequestException as exc:
                 self.logger.error(f"[{self.name}] Request failed - {exc}")
                 return self._prepare_response(rp_url, None, [self._network_error(exc)])
@@ -369,6 +380,9 @@ class RestPyModule:
             nurl, nparams = self._generate_url_params_url(request_method, rp_url, nurl, nparams)
             # Add custom data to post url
             nurl, nparams = self._apply_custom_data_to_post_url(request_method, rp_url, nurl, nparams, **xtra_params)
+            unresolved = [name for _, name, _, _ in string.Formatter().parse(nurl) if name]
+            if unresolved:
+                raise RestPyURLParamsException(f"Unresolved URL placeholders: {', '.join(unresolved)}")
 
             self.logger.debug(f"[{self.name}] {request_method} {nurl}")
             return RequestMethodChoice.request(request_method, session=self.session)(
@@ -393,12 +407,13 @@ class RestPyModule:
     def _generate_url_params_url(self, request_method, rp_url, url, url_params):
         uri_params_url = {}
         for str_field in rp_url.url_fields:
-            url_value = url_params.get(str_field)
-            if url_value:
+            url_value = url_params.pop(str_field, None)
+            if url_value is not None:
                 uri_params_url[str_field] = url_value
-                url_params.pop(str_field, None)
+        if url_params:
+            raise RestPyURLParamsException(f"Undeclared URL params: {', '.join(map(str, url_params))}")
         if uri_params_url:
-            url = url.format(**uri_params_url)
+            url = url.format_map(_KeepPlaceholders(uri_params_url))
         return url, url_params
 
     def _check_login_action(self, response):

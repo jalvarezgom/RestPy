@@ -8,6 +8,7 @@ Exception
     ├── RestPyAuthException          # authentication errors
     ├── RestPyValidatorException     # field validation errors
     ├── RestPyURLNotFoundException   # endpoint not registered
+    ├── RestPyURLParamsException     # unresolved or undeclared URL params
     ├── RestPyResponseTypeException  # unsupported response type
     └── RestPyRunnerException        # exception + validator
         ├── RestPyRequestMethodException
@@ -84,6 +85,7 @@ Adds to `RestPyException`:
 | `RestPyAuthException` | A request is made with no `auth_module` set; or `RestPyAuthOAuth2` without `oauth_filepath`. **Raised.** |
 | `RestPyLoginException` | Login with `refresh=True` fails. **Raised.** |
 | `RestPyURLNotFoundException` | The name or path does not match a registered endpoint. **Returned** in `errors`. |
+| `RestPyURLParamsException` | A `{placeholder}` is left unresolved, or `url_params` holds a name that is not a declared URL field. **Returned** in `errors`; no request is sent. |
 | `RestPyRequestMethodException` | The verb is not in the endpoint's `request_methods`. **Returned** in `errors`. |
 | `RestPyIsSuccessResponse` | The default runner when the status is invalid. **Returned** in `errors`. |
 | `RestPyResponseTypeException` | Unsupported `response_data_type` at parse time. **Raised.** |
