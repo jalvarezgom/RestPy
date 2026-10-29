@@ -50,18 +50,18 @@ class RestPyURL:
         self.url: str = url
         self.request_methods: list[HTTPMethod] = list(request_methods) if request_methods else list(ALL_REQUEST_METHODS)
         self.request_data_type: DataTypeChoice = request_data_type
-        self._fields: Dict[str, RESTpyField] = {}
+        self._fields: Dict[tuple[RestPyFieldWhereData, str], RESTpyField] = {}
         self.response_data_type: DataTypeChoice = response_data_type
         self._response_manager: RESTpyResponse = response_manager
         for url_param in url_params or []:
             field = RESTpyField(where_data=RestPyFieldWhereData.URL_PARAMS, **url_param)
-            self._fields[field.name] = field
+            self._fields[(field.where_data, field.name)] = field
         for query_param in query_params or []:
             field = RESTpyField(where_data=RestPyFieldWhereData.QUERY_PARAMS, **query_param)
-            self._fields[field.name] = field
+            self._fields[(field.where_data, field.name)] = field
         for dat in data_params or []:
             field = RESTpyField(where_data=RestPyFieldWhereData.BODY, **dat)
-            self._fields[field.name] = field
+            self._fields[(field.where_data, field.name)] = field
 
     @property
     def response_manager(self):
@@ -83,5 +83,7 @@ class RestPyURL:
     def data_fields(self):
         return {field.name: field for field in self.fields_list if field.where_data == RestPyFieldWhereData.BODY}
 
-    def get_field(self, name):
-        return self._fields.get(name, None)
+    def get_field(self, name, where_data: RestPyFieldWhereData = None):
+        if where_data is not None:
+            return self._fields.get((where_data, name), None)
+        return next((field for field in self.fields_list if field.name == name), None)

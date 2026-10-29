@@ -97,7 +97,7 @@ The object representing a registered endpoint.
 | `url_fields` (`cached_property`) | Fields with `where_data == URI`. |
 | `query_fields` (`cached_property`) | Fields with `where_data == QUERY`. |
 | `data_fields` (`cached_property`) | Fields with `where_data == BODY`. |
-| `get_field(name)` | Returns a field by name, or `None`. |
+| `get_field(name, where_data=None)` | Returns a field by name, or `None`. Pass `where_data` to pick one location when the same name is declared in several (URL, query, body); without it the first match is returned. |
 
 Endpoint names are unique **per client**: `register()` raises `ValueError` when the name
 is already in that client's `registered_urls`. Two different clients can each register a

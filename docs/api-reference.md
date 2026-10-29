@@ -100,7 +100,7 @@ RestPyURL(name=None, url="", request_methods=None, request_data_type=None,
 
 Members: `name`, `url`, `request_methods`, `request_data_type`, `response_data_type`,
 `response_manager`, `fields_list`, `url_fields`, `query_fields`, `data_fields`,
-`get_field(name)`.
+`get_field(name, where_data=None)`.
 
 ## `RESTpyField`
 

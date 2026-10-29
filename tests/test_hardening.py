@@ -7,7 +7,8 @@ import pytest
 import requests
 
 from restpy import RestPy, RestPyAuthBasic, RestPyAuthDisabled, RestPyAuthModule, RestPyAuthOAuth2
-from restpy.exceptions import RESTpyTimeOutException, RestPyConnectionException, RestPyLoginException, RestPyURLParamsException
+from restpy.exceptions import RESTpyTimeOutException, RestPyConnectionException, RestPyLoginException, RestPyURLParamsException, RestPyValidatorException
+from restpy.classes.url import RestPyFieldWhereData
 from restpy.validators import DatetimeObjectValidator, DateYearMonthDayValidator
 from tests.conftest import FakeResponse
 
@@ -199,3 +200,40 @@ class TestURLParams:
         response = api.get("item", url_params={"id": 1, "other": 2})
         assert isinstance(response.errors[0], RestPyURLParamsException)
         assert transport.calls == []
+
+
+class TestSameNameFields:
+    """RP-031: a field name reused in URL, query and body keeps one definition per location."""
+
+    @pytest.fixture
+    def api(self):
+        api = RestPy(base_url="https://hardening.test", auth_action=RestPyAuthDisabled())
+        api.register(
+            name="item",
+            url="/items/{id}",
+            request_methods=[HTTPMethod.POST],
+            url_params=[{"name": "id", "is_required": True}],
+            data_params=[{"name": "id", "is_required": True}],
+        )
+        return api
+
+    def test_both_fields_are_kept(self, api):
+        rp_url = api.search_url(name="item")
+        assert len(rp_url.fields_list) == 2
+        assert set(rp_url.url_fields) == {"id"} and set(rp_url.data_fields) == {"id"}
+        assert rp_url.get_field("id", RestPyFieldWhereData.URL_PARAMS).where_data == RestPyFieldWhereData.URL_PARAMS
+        assert rp_url.get_field("id", RestPyFieldWhereData.BODY).where_data == RestPyFieldWhereData.BODY
+
+    def test_missing_url_field_is_validated(self, api, transport):
+        response = api.post("item", data_params={"id": 1})
+        assert isinstance(response.errors[0], RestPyValidatorException)
+        assert transport.calls == []
+
+    def test_missing_body_field_is_validated(self, api, transport):
+        response = api.post("item", url_params={"id": 1})
+        assert isinstance(response.errors[0], RestPyValidatorException)
+        assert transport.calls == []
+
+    def test_both_present_sends_request(self, api, transport):
+        api.post("item", url_params={"id": 1}, data_params={"id": 2})
+        assert transport.last_call.url == "https://hardening.test/items/1"
