@@ -39,7 +39,7 @@ RestPy(headers=None, base_url=None, base_url_params=None, auth_action=None)
 | `RETRIES_TIMEOUT_SECONDS` | `1` |
 | `RETRIES_TIMEOUT_STATUS_CODES` | `[408, 504]` |
 | `RETRIES_STATUS_CODES` | `[408, 504]` |
-| `REFRESH_LOGIN_STATUS_CODES` | `[401, 403]` |
+| `REFRESH_LOGIN_STATUS_CODES` | `[401]` |
 | `default_request_data_type` | `DataTypeChoice.DICT` |
 | `default_response_data_type` | `DataTypeChoice.JSON` |
 | `default_response_manager` | `RESTpyResponse` |

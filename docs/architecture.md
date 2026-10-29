@@ -61,7 +61,7 @@ restpy/
    headers.
 4. **Send loop** (up to `RETRIES_URL` attempts, 3 by default):
    - `_send_request()` builds the URL and headers and performs the call via `requests`.
-   - If the status is in `REFRESH_LOGIN_STATUS_CODES` (401, 403) and no refresh has
+   - If the status is in `REFRESH_LOGIN_STATUS_CODES` (401) and no refresh has
      happened yet, `login(refresh=True)` runs **once** and the request is retried.
    - If the status is in `RETRIES_TIMEOUT_STATUS_CODES` (408, 504), it waits
      `RETRIES_TIMEOUT_SECONDS` and retries.

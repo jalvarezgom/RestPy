@@ -142,3 +142,35 @@ class TestNoSecretsInLogs:
         oauth.login(refresh=True)
 
         assert "SECRET" not in caplog.text
+
+
+class CountingAuth(RestPyAuthModule):
+    def __init__(self):
+        super().__init__()
+        self.logins = []
+
+    def login(self, refresh=False):
+        self.logins.append(refresh)
+        self._token = "tok"
+        return True
+
+
+class TestForbiddenDoesNotRefresh:
+    """RP-027: a 403 is returned as-is; only a 401 refreshes the login."""
+
+    def test_default_codes_only_contain_401(self):
+        assert RestPy.REFRESH_LOGIN_STATUS_CODES == [401]
+
+    def test_403_is_not_refreshed(self, transport):
+        transport.queue(FakeResponse(403))
+        auth = CountingAuth()
+        response = make_api(auth).get("ping")
+        assert response.status_code == 403
+        assert auth.logins == [False]
+        assert len(transport.calls) == 1
+
+    def test_401_is_refreshed_once(self, transport):
+        transport.queue(FakeResponse(401), FakeResponse(200, {}))
+        auth = CountingAuth()
+        make_api(auth).get("ping")
+        assert auth.logins == [False, True]

@@ -33,9 +33,9 @@ Configurable as `RestPyModule` class attributes:
 | `RETRIES_TIMEOUT_SECONDS` | `1` | Delay between attempts when the status is a timeout. |
 | `RETRIES_TIMEOUT_STATUS_CODES` | `[408, 504]` | Statuses that trigger a retry **with** a delay. |
 | `RETRIES_STATUS_CODES` | `[408, 504]` | Statuses that trigger a retry. |
-| `REFRESH_LOGIN_STATUS_CODES` | `[401, 403]` | Statuses that trigger `login(refresh=True)`. |
+| `REFRESH_LOGIN_STATUS_CODES` | `[401]` | Statuses that trigger `login(refresh=True)`. A 403 means the token is valid but not allowed, so it is not refreshed; add `HTTPStatus.FORBIDDEN` to opt in. |
 
-The login refresh happens **once per request**: if the response is 401/403 again after
+The login refresh happens **once per request**: if the response is 401 again after
 renewing the token, no further attempt is made.
 
 Retries after the first one reuse `response.request.url`, that is, the already-resolved

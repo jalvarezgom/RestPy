@@ -37,7 +37,7 @@ Any extra `kwarg` passed to the constructor is set as an instance attribute, whi
 Methods a subclass must implement:
 
 - `login(refresh=False)` → `bool`. Obtains the token. `refresh=True` means the previous
-  token was rejected (401/403) and must be renewed.
+  token was rejected (401) and must be renewed.
 - `generate_auth_headers(**params)` → `dict`. By default it formats
   `{authorization_key: authorization_value_format.format(token=self.token)}`.
 
@@ -118,7 +118,7 @@ api = MyAPI(auth_action=RestPyAuthDisabled())
 
 1. On the first request, `RestPyModule.login()` calls `auth_module.login()` only if
    `auth_module.token` is empty, then generates the headers.
-2. If a request comes back 401 or 403 (`REFRESH_LOGIN_STATUS_CODES`),
+2. If a request comes back 401 (`REFRESH_LOGIN_STATUS_CODES`),
    `login(refresh=True)` runs and the request is retried **exactly once**.
 3. If login with `refresh=True` fails, `RestPyLoginException` is raised. If it fails
    without a refresh, the failure is only logged as an error.
