@@ -12,11 +12,14 @@ class RestPyAuthModule:
         authorization_key: Name of the auth header.
         authorization_value_format: Header value template; `{token}` is replaced with the token.
         REQUEST_TIMEOUT_SECONDS: Timeout of the module's own network calls.
+        ssl_verify: `verify` passed to the module's own network calls (True by default).
+            Independent of the client's `ssl_verify`.
     """
 
     mode = None
 
     REQUEST_TIMEOUT_SECONDS = 30
+    ssl_verify = True
 
     authorization_key = "Authorization"
     authorization_value_format = "Bearer {token}"
