@@ -2,6 +2,12 @@ from restpy.validators.base import BaseValidator
 
 
 class RequiredFieldValidator(BaseValidator):
+    """Check that a required `RESTpyField` is present in the given params.
+
+    Unlike other validators it takes the field and the params dict: `validate(rp_field, params)`.
+    A value is missing when the key is absent, `None`, or `""` (unless `allow_empty`).
+    """
+
     _base_message = "Field: {field_name} | MSG:"
     _error_message = "Field is required"
 

@@ -2,6 +2,8 @@ from restpy.auth.auth import RestPyAuthModule
 
 
 class RestPyAuthRawToken(RestPyAuthModule):
+    """Use a fixed token you already have; there is no login request. `login()` only checks it is set."""
+
     mode = "RAW_TOKEN"
 
     raw_token = None

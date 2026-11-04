@@ -32,6 +32,26 @@ class _KeepPlaceholders(dict):
 
 
 class RestPyModule:
+    """Client for one REST API: a registry of endpoints plus the machinery to call them.
+
+    Subclass it and override `register_urls()` (or call `register()` on an instance) to declare
+    the endpoints, then call them by name with `get`, `post`, `put`, `patch` and `delete`.
+    Every call returns a `RESTpyResponse`; failures (validation, login, network, status) are
+    reported in `response.errors` instead of being raised.
+
+    The class attributes below are declarative defaults. Mutable ones (`headers`, the valid
+    status list and the runners) are copied per instance in `__init__`, so changing one client
+    never affects another.
+
+    Retry settings:
+        RETRIES_URL: maximum attempts per request. A login refresh does not consume one.
+        RETRIES_TIMEOUT_SECONDS: pause between attempts.
+        REQUEST_TIMEOUT_SECONDS: timeout passed to every network call.
+        RETRIES_TIMEOUT_STATUS_CODES: statuses that are retried after a pause.
+        RETRIES_STATUS_CODES: statuses that are retried.
+        REFRESH_LOGIN_STATUS_CODES: statuses that trigger one login refresh (401 by default).
+    """
+
     # [AUTH]
     auth_module: RestPyAuthModule = None
 
@@ -67,6 +87,18 @@ class RestPyModule:
     _session: requests.Session = None
 
     def __init__(self, headers: dict = None, base_url: str = None, base_url_params: list = None, auth_action: RestPyAuthModule = None):
+        """Create a client.
+
+        Args:
+            headers: Headers sent on every request. They replace the class-level `headers`.
+            base_url: Prefix prepended to every registered endpoint URL.
+            base_url_params: Field definitions (`url_params` dicts) added to every endpoint, for
+                placeholders that live in the base URL.
+            auth_action: Authentication module. It can also be set later with `set_auth()`.
+
+        Raises:
+            ValueError: If `auth_action` is not a `RestPyAuthModule` instance.
+        """
         self.registered_urls: Dict[str, RestPyURL] = {}
         self._registrations: Dict[str, dict] = {}
         self._session: requests.Session = None
@@ -88,7 +120,7 @@ class RestPyModule:
         self.register_urls()
 
     def register_urls(self):
-        pass
+        """Hook called at the end of `__init__`. Override it to call `register()` for each endpoint."""
 
     # [Properties]
     @property
@@ -124,6 +156,7 @@ class RestPyModule:
 
     @property
     def logger(self):
+        """The `restpy` logger, or the root logger when `restpy` has no handlers configured."""
         if not self._logger:
             self._logger = logging.getLogger("restpy")
             if not self._logger.hasHandlers():
@@ -132,11 +165,26 @@ class RestPyModule:
 
     # [Authentication]
     def set_auth(self, auth_action):
+        """Replace the authentication module. Raises `ValueError` if it is not a `RestPyAuthModule`."""
         if not isinstance(auth_action, RestPyAuthModule):
             raise ValueError("auth_action must be an instance of RestPyAuth")
         self.auth_module = auth_action
 
     def login(self, refresh=False):
+        """Authenticate and build the auth headers.
+
+        The auth module is only asked to log in when `refresh` is true or it has no token yet.
+
+        Args:
+            refresh: Force a new login (used after a 401).
+
+        Returns:
+            True on success. False when the first login fails.
+
+        Raises:
+            RestPyAuthException: If no auth module is configured.
+            RestPyLoginException: If a forced refresh fails.
+        """
         if not self.auth_module:
             raise RestPyAuthException('You must define "auth_module" variable with a valid RESTpyAuth class.')
         status = True
@@ -181,6 +229,25 @@ class RestPyModule:
         response_data_type: DataTypeChoice = None,
         response_manager: RESTpyResponse = None,
     ):
+        """Declare an endpoint so it can be called by name.
+
+        Args:
+            name: Unique name of the endpoint in this client.
+            url: Path appended to the base URL. Use `{field}` placeholders for URL params.
+            request_methods: HTTP methods the endpoint accepts. Other verbs are rejected.
+            request_data_type: How the body is sent. Defaults to `default_request_data_type`.
+            url_params: Field definitions for the placeholders in `url`.
+            query_params: Field definitions for the query string.
+            data_params: Field definitions for the body.
+            response_data_type: How the response is parsed. Defaults to `default_response_data_type`.
+            response_manager: `RESTpyResponse` subclass used to wrap the response.
+
+        Each field definition is a dict accepted by `RESTpyField` (`name`, `is_required`,
+        `allow_empty`, `validator`). The base URL params are added to `url_params`.
+
+        Raises:
+            ValueError: If an argument is invalid or `name` is already registered.
+        """
         registration = {
             "name": name,
             "url": url,
@@ -242,6 +309,14 @@ class RestPyModule:
             raise ValueError(f"{argument_name} must be a DataTypeChoice member, got {data_type!r}.") from None
 
     def search_url(self, *, name: str = None, url_str: str = None):
+        """Find a registered endpoint by `name`, or by its `url` path when no name is given.
+
+        Returns:
+            The `RestPyURL`, or None when nothing matches.
+
+        Raises:
+            ValueError: If neither `name` nor `url_str` is given.
+        """
         if name:
             url = self._search_url_by_name(name)
         elif url_str:
@@ -259,6 +334,11 @@ class RestPyModule:
         return next((rp_url for rp_url in self.registered_urls.values() if rp_url.url == url), None)
 
     # [Actions]
+    # `get`, `post`, `put`, `patch` and `delete` share one signature:
+    #   name / url_str: the endpoint, by registered name or by its URL path.
+    #   url_params / query_params / data_params: values for the declared fields; the dicts are not modified.
+    #   **xtra_params: forwarded to the `_apply_custom_data_to_*_url` hooks and to field validation.
+    # They return a `RESTpyResponse` and do not raise on request failures.
     def get(self, name: str = None, url_str: str = None, url_params: dict = None, query_params: dict = None, data_params: dict = None, **xtra_params):
         return self._emit_request(
             HTTPMethod.GET, name=name, url_str=url_str, url_params=url_params, query_params=query_params, data_params=data_params, **xtra_params
@@ -293,6 +373,12 @@ class RestPyModule:
     def _emit_request(
         self, request_method: HTTPMethod, name: str = None, url_str: str = None, url_params=None, query_params=None, data_params=None, **xtra_params
     ):
+        """Run one request end to end and always return a `RESTpyResponse`.
+
+        Order: resolve the endpoint and check the verb, validate the fields, log in, send with
+        retries (timeouts, 408/504, one login refresh on 401), then validate the status and the
+        payload. The first failing stage returns a response whose `errors` explains it.
+        """
         rp_url: RestPyURL | None = self.search_url(name=name, url_str=url_str)
         # Validate the request method
         field_errors = self._validate_request_method(request_method, rp_url)
@@ -361,11 +447,21 @@ class RestPyModule:
 
     @staticmethod
     def _network_error(exc):
+        """Map a `requests` failure to `RESTpyTimeOutException` or `RestPyConnectionException`."""
         if isinstance(exc, requests.Timeout):
             return RESTpyTimeOutException(str(exc))
         return RestPyConnectionException(str(exc))
 
     def _send_request(self, request_method, rp_url, response, url_params, query_params, data_params, **xtra_params):
+        """Send one HTTP request.
+
+        With `response=None` the URL is built from the base URL, the endpoint path, the URL
+        params and the two hooks. With a previous `response` (a retry) its final URL is reused.
+
+        Raises:
+            RestPyURLParamsException: If a URL param is undeclared or a placeholder is left unresolved.
+            requests.RequestException: On network failure; `_emit_request` turns it into an error response.
+        """
         # Prepare request data
         nheaders, ndata = DataTypeChoice.parse_request(rp_url.request_data_type, data_params)
 
@@ -403,12 +499,21 @@ class RestPyModule:
             )
 
     def _apply_custom_data_to_pre_url(self, request_method, rp_url, nurl, params, **xtra_params):
+        """Hook run before the URL params are substituted. Return the `(url, params)` to continue with."""
         return nurl, params
 
     def _apply_custom_data_to_post_url(self, request_method, rp_url, url, params, **xtra_params):
+        """Hook run after the URL params are substituted. Return the `(url, params)` to continue with."""
         return url, params
 
     def _generate_url_params_url(self, request_method, rp_url, url, url_params):
+        """Substitute the declared URL params into `url`, consuming them from `url_params`.
+
+        Values are inserted as they are, without percent-encoding.
+
+        Raises:
+            RestPyURLParamsException: If `url_params` holds keys that are not declared fields.
+        """
         uri_params_url = {}
         for str_field in rp_url.url_fields:
             url_value = url_params.pop(str_field, None)
@@ -430,6 +535,7 @@ class RestPyModule:
         return response.status_code in self.RETRIES_TIMEOUT_STATUS_CODES
 
     def _prepare_response(self, rp_url, response, field_errors):
+        """Wrap `response` with the endpoint's `response_manager`. With errors, no data is parsed."""
         response_manager = rp_url.response_manager if rp_url is not None else self.default_response_manager
         if field_errors:
             return response_manager(response, None, field_errors)
@@ -437,6 +543,7 @@ class RestPyModule:
 
     # [Validators]
     def _validate_request_method(self, request_method, url):
+        """Return the errors for an unknown endpoint or a verb the endpoint does not accept."""
         if url is None:
             return [RestPyURLNotFoundException(url)]
         exception = RestPyRequestMethodException.validate(request_method, url=url)
@@ -445,6 +552,11 @@ class RestPyModule:
         return []
 
     def _validate_request_fields(self, rp_url, url_params, query_params, data_params, **xtra_params):
+        """Check required fields and run each field's validator, for the three locations.
+
+        Validated values replace the originals in the given dicts, so pass copies. Returns the
+        list of exceptions found.
+        """
         field_errors = []
         params_by_where = {
             RestPyFieldWhereData.URL_PARAMS: url_params,
@@ -469,6 +581,7 @@ class RestPyModule:
         return field_errors
 
     def _validate_response_status(self, rp_url, response, **xtra_params):
+        """Return an error only when the status is outside `_VALID_STATUS` and a status runner flags it."""
         list_exceptions = []
         exception = RestPyIsValidStatusResponse.validate(response, valid_status=self._VALID_STATUS)
         if exception:
@@ -482,6 +595,7 @@ class RestPyModule:
         return list_exceptions
 
     def validate_response_data(self, rp_url, response, **xtra_params):
+        """Run the response runners and return the first error found. Override for custom payload checks."""
         list_exceptions = []
         for exception in self._validator_runner(self._EXCEPTION_VALID_RESPONSE_RUNNER, response):
             if exception:
@@ -490,11 +604,13 @@ class RestPyModule:
         return list_exceptions
 
     def add_valid_status(self, status_code):
+        """Accept `status_code` (an `HTTPStatus`) as a valid response status for this client."""
         if not isinstance(status_code, HTTPStatus):
             raise ValueError("status_code must be an instance of HTTPStatus")
         self._VALID_STATUS.append(status_code)
 
     def remove_valid_status(self, status_code):
+        """Stop accepting `status_code` (an `HTTPStatus`). Raises `ValueError` if it is not in the list."""
         if not isinstance(status_code, HTTPStatus):
             raise ValueError("status_code must be an instance of HTTPStatus")
         self._VALID_STATUS.remove(status_code)
@@ -507,22 +623,27 @@ class RestPyModule:
             raise ValueError("exception_runner must be a RestPyRunnerException subclass")
 
     def add_exception_valid_status_runner(self, exception_runner):
+        """Add a `RestPyRunnerException` subclass that flags a response status as an error."""
         self._validate_exception_runner(exception_runner)
         self._EXCEPTION_VALID_STATUS_RUNNER.append(exception_runner)
 
     def remove_exception_valid_status_runner(self, exception_runner):
+        """Remove a status runner added with `add_exception_valid_status_runner` (or a default one)."""
         self._validate_exception_runner(exception_runner)
         self._EXCEPTION_VALID_STATUS_RUNNER.remove(exception_runner)
 
     def add_exception_valid_response_runner(self, exception_runner):
+        """Add a `RestPyRunnerException` subclass that flags a response payload as an error."""
         self._validate_exception_runner(exception_runner)
         self._EXCEPTION_VALID_RESPONSE_RUNNER.append(exception_runner)
 
     def remove_exception_valid_response_runner(self, exception_runner):
+        """Remove a response runner added with `add_exception_valid_response_runner`."""
         self._validate_exception_runner(exception_runner)
         self._EXCEPTION_VALID_RESPONSE_RUNNER.remove(exception_runner)
 
     def _validator_runner(self, validations_to_run, response, **xtra_params):
+        """Yield the result of `validate(response)` for each runner: an exception or None."""
         for exception_runner in validations_to_run:
             exception = exception_runner.validate(response)
             yield exception

@@ -1,5 +1,5 @@
 class RestPyException(Exception):
-    """Base exception class."""
+    """Base of every exception RestPy defines. `base_message` is the fixed part of `message`."""
 
     base_message = None
 
@@ -16,12 +16,27 @@ class RestPyException(Exception):
 
 
 class RestPyRunnerException(RestPyException):
+    """Exception that also acts as a check: `validate(response)` returns an instance when the check fails.
+
+    Subclasses implement `_validation`, returning True when the response is an error. Pass the
+    class (not an instance) to the client's `add_exception_*_runner` methods.
+    """
+
     @classmethod
     def _validation(cls, response, **xtra_params):
+        """Return True when `response` should be reported as an error."""
         raise NotImplementedError("You must implement this method in your Exception.")
 
     @classmethod
     def validate(cls, response, raise_exception=False, **xtra_params):
+        """Run the check.
+
+        Returns:
+            An instance of the exception when the check fails, otherwise None.
+
+        Raises:
+            The exception itself when the check fails and `raise_exception` is true.
+        """
         exc = None
         if cls._validation(response, **xtra_params):
             exc = cls(cls.name)

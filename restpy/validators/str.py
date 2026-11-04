@@ -4,6 +4,8 @@ from restpy.validators.base import BaseValidator
 
 
 class StrValidator(BaseValidator):
+    """Accept a `str`; numbers (booleans included) are converted to `str`."""
+
     _error_message = "It must be a string."
 
     @classmethod

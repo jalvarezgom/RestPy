@@ -6,6 +6,12 @@ from restpy.choices.request_method import RequestMethodChoice
 
 
 class RestPyAuthBasic(RestPyAuthModule):
+    """Log in by POSTing a username and password, then use the returned token as a bearer token.
+
+    The credentials go in the JSON body (`send_auth_in_body=True`) or in the query string
+    (`False`, which can leak them into server logs and proxies).
+    """
+
     mode = "BASIC"
 
     send_auth_in_body = False
@@ -27,6 +33,15 @@ class RestPyAuthBasic(RestPyAuthModule):
         get_token_key: str = "token",
         **xtra_params,
     ):
+        """
+        Args:
+            auth_url: Login endpoint.
+            send_auth_in_body: Send the credentials in the body instead of the query string.
+            username: Login user.
+            password: Login password.
+            get_token_method: `requests.Response` attribute holding the token; "json" reads a key from the JSON body.
+            get_token_key: Key of the token inside the JSON body.
+        """
         self.auth_url = auth_url
         self.send_auth_in_body = send_auth_in_body
         if not send_auth_in_body:
@@ -39,9 +54,11 @@ class RestPyAuthBasic(RestPyAuthModule):
 
     @property
     def basic_auth_credentials(self):
+        """The credentials as the `username`/`password` dict that gets sent."""
         return {"username": self.username, "password": self.password}
 
     def login(self, refresh=False):
+        """POST the credentials to `auth_url`. Return True when the server answers 200."""
         if self.send_auth_in_body:
             (params, body) = ({}, self.basic_auth_credentials)
         else:

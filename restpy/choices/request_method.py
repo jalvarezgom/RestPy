@@ -14,6 +14,8 @@ METHOD_FUNCTION_NAMES = {
 
 
 class RequestMethodChoice:
+    """Maps an `HTTPMethod` to the matching `requests` function."""
+
     @staticmethod
     def request(method, session=None):
         """Resolve the verb against `session`, or against the `requests` module when there is none.

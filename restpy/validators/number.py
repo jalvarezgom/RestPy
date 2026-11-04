@@ -4,6 +4,8 @@ from restpy.validators.base import BaseValidator
 
 
 class NumberValidator(BaseValidator):
+    """Accept any `numbers.Number` (booleans included)."""
+
     _error_message = "It must be a number."
 
     @classmethod

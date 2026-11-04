@@ -1,4 +1,6 @@
 class SingletonMeta:
+    """Mixin whose `__new__` always returns the first instance created."""
+
     _instance = None
 
     def __new__(cls, *args, **kwargs):
@@ -8,6 +10,8 @@ class SingletonMeta:
 
 
 class SingletonClass(SingletonMeta):
+    """Singleton that runs the parent `__init__` only once, with the arguments of the first call."""
+
     _is_init = False
 
     def __init__(self, headers: dict = None, base_url: str = None, base_url_params: list = None, auth_action=None):

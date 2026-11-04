@@ -4,19 +4,33 @@ from restpy.exceptions.validators import RestPyValidatorException
 
 
 class BaseValidator:
+    """Base of the field validators; subclasses implement `_run_validation`.
+
+    Validators are used through the class method `validate`, but `RESTpyField` expects an
+    instance. A list value is validated item by item.
+    """
+
     _base_message = "Field: {field_name} Value: {value} | MSG:"
     _error_message = None
 
     @classmethod
     def error_message(cls, error_fields=None):
+        """Format the class's `_error_message` with `error_fields`."""
         return f"{cls._error_message}".format(**(error_fields or {}))
 
     @classmethod
     def get_error_message(cls, error_fields=None, error_msg=None):
+        """Build the full message: validator name, field, value and `error_msg`."""
         return f"{cls.__name__} {cls._base_message} {error_msg}".format(**(error_fields or {}))
 
     @classmethod
     def validate(cls, field_name, original_value):
+        """Validate a value.
+
+        Returns:
+            `(value, exception)`: the (possibly normalized) value and None, or None and a
+            `RestPyValidatorException`. A None `original_value` passes as `(None, None)`.
+        """
         (values, exception_msg) = cls._validate(field_name, original_value)
         if exception_msg:
             exception_msg = RestPyValidatorException(exception_msg)
@@ -46,10 +60,13 @@ class BaseValidator:
 
     @classmethod
     def _run_validation(cls, value):
+        """Validate one item. Return `(new_value, error_fields)`; a `new_value` of None means invalid."""
         raise NotImplementedError("Subclasses must implement this method.")
 
 
 class ChoiceValidator(BaseValidator):
+    """Accept only values contained in `_choice_class` (an Enum, list or similar); set it in a subclass."""
+
     _error_message = "Must be one of the valid choices in {choice_class}"
     _choice_class = None
 
@@ -61,6 +78,11 @@ class ChoiceValidator(BaseValidator):
 
 
 class DatetimeValidator(BaseValidator):
+    """Accept a `datetime` or a `str` in `format_date` (ISO 8601 when it is None).
+
+    With `to_string=True` the output is a `str`; with `False` it is a `datetime`.
+    """
+
     _error_message = "Must be a datetime object or a str with format {format_date}"
     to_string = True
     format_date = None
@@ -80,6 +102,8 @@ class DatetimeValidator(BaseValidator):
 
 
 class IgnoreCaseValidator(BaseValidator):
+    """Accepts any value unchanged. Despite the name it does no case handling."""
+
     @classmethod
     def _run_validation(cls, value):
         return (value, {})
