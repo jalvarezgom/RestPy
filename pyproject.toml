@@ -1,0 +1,130 @@
+[project]
+name = "RestPy"
+version = "1.0.0"
+description = "RestPy is a python library that serves to manage and process in an aggregated and comfortable way the requests to a domain based on a REST API. It allows to manage different types of authentication such as Basic, Token and OAuth2.0."
+authors = [
+    {name = "Jancel", email = "ja.alvarezgom@gmail.com"},
+]
+dependencies = [
+    "requests>=2.34.2",
+    "xmltodict>=1.0.4",
+]
+requires-python = "==3.12.*"
+readme = "README.md"
+license = {text = "mit"}
+
+
+[project.urls]
+Homepage = "https://github.com/jalvarezgom/RestPy"
+Issues = "https://github.com/jalvarezgom/RestPy/issues"
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm]
+distribution = true
+
+[tool.pdm.build]
+includes = ["restpy"]
+
+[tool.pdm.dev-dependencies]
+lint = [
+    "ruff>=0.5.5",
+]
+test = [
+    "pytest>=8.3.2",
+    "pytest-cov>=7.1.0",
+]
+
+[tool.pdm.scripts]
+lint.composite = ["ruff check --fix", "ruff format"]
+test = "pytest"
+cov = "pytest --cov=restpy --cov-report=term-missing"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Integration tests hit real services; they are opt-in via `pytest -m integration`.
+addopts = "-m 'not integration'"
+markers = ["integration: performs real network requests against an external API"]
+
+[tool.ruff]
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+    # Ruff also formats the Python blocks inside Markdown; the docs keep their own layout.
+    "*.md",
+]
+
+# Same as Black.
+line-length = 150
+indent-width = 4
+
+target-version = "py312"
+
+[tool.ruff.lint]
+# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
+# Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
+# McCabe complexity (`C901`) by default.
+# `B` (flake8-bugbear) catches mutable default arguments (B006), see RP-020.
+select = ["E4", "E7", "E9", "F", "B"]
+ignore = []
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
+
+# Enable auto-formatting of code examples in docstrings. Markdown,
+# reStructuredText code/literal blocks and doctests are all supported.
+#
+# This is currently disabled by default, but it is planned for this
+# to be opt-out in the future.
+docstring-code-format = false
+
+# Set the line length limit used when formatting code snippets in
+# docstrings.
+#
+# This only has an effect when the `docstring-code-format` setting is
+# enabled.
+docstring-code-line-length = "dynamic"

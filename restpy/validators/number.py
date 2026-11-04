@@ -1,0 +1,15 @@
+import numbers
+
+from restpy.validators.base import BaseValidator
+
+
+class NumberValidator(BaseValidator):
+    """Accept any `numbers.Number` (booleans included)."""
+
+    _error_message = "It must be a number."
+
+    @classmethod
+    def _run_validation(cls, value):
+        if not isinstance(value, numbers.Number):
+            return (None, {})
+        return (value, {})
