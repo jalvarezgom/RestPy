@@ -100,6 +100,21 @@ class TestTimeoutRetries:
         api.get("ping")
         assert [call.timeout for call in transport.calls] == [7, 7]
 
+    def test_ssl_verify_defaults_to_true_on_every_attempt(self, transport, sleeps):
+        api = make_api()
+        transport.queue(FakeResponse(504), FakeResponse(200, {}))
+        api.get("ping")
+        assert [call.verify for call in transport.calls] == [True, True]
+
+    def test_ssl_verify_false_is_sent_to_requests(self, transport):
+        api = make_api()
+        api.ssl_verify = False
+        api.get("ping")
+        assert all(call.verify is False for call in transport.calls)
+
+    def test_ssl_verify_can_be_set_in_the_constructor(self):
+        assert type(make_api())(ssl_verify="/ca.pem").ssl_verify == "/ca.pem"
+
 
 class TestRefreshFailures:
     def test_network_error_while_refreshing_is_returned(self, transport):

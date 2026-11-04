@@ -69,7 +69,7 @@ class RestPyAuthOAuth2(RestPyAuthModule):
         else:
             self.logger.debug(f"[{self.name}] Refresh OAuth2 token")
             refresh_response = RequestMethodChoice.request(HTTPMethod.POST)(
-                f"{self.oauth_token_url}", data=self._oauth2_refresh_credentials(), timeout=self.REQUEST_TIMEOUT_SECONDS
+                f"{self.oauth_token_url}", data=self._oauth2_refresh_credentials(), timeout=self.REQUEST_TIMEOUT_SECONDS, verify=self.ssl_verify
             )
             if refresh_response.status_code != 200:
                 self.logger.error(f"[{self.name}] Refresh OAuth2 token failed - {refresh_response.status_code}")

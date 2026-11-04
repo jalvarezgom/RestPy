@@ -67,7 +67,7 @@ class RestPyAuthBasic(RestPyAuthModule):
             f"[{self.name}] Login action - URL: {self.auth_url} using {self.username} in {'Body' if self.send_auth_in_body else 'Params'}"
         )
         response = RequestMethodChoice.request(HTTPMethod.POST)(
-            f"{self.auth_url}", cookies=self.cookies, params=params, json=body, timeout=self.REQUEST_TIMEOUT_SECONDS
+            f"{self.auth_url}", cookies=self.cookies, params=params, json=body, timeout=self.REQUEST_TIMEOUT_SECONDS, verify=self.ssl_verify
         )
         self.logger.debug(f"[{self.name}] Login action - Response: {response.status_code}")
         if response.status_code == 200:

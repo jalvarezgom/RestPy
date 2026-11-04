@@ -47,6 +47,10 @@ class RestPyModule:
         RETRIES_URL: maximum attempts per request. A login refresh does not consume one.
         RETRIES_TIMEOUT_SECONDS: pause between attempts.
         REQUEST_TIMEOUT_SECONDS: timeout passed to every network call.
+
+    Connection settings:
+        ssl_verify: passed as `verify` to every `requests` call (True by default). Accepts a bool
+            or the path to a CA bundle. The auth module's own calls use its own `ssl_verify` instead.
         RETRIES_TIMEOUT_STATUS_CODES: statuses that are retried after a pause.
         RETRIES_STATUS_CODES: statuses that are retried.
         REFRESH_LOGIN_STATUS_CODES: statuses that trigger one login refresh (401 by default).
@@ -59,6 +63,7 @@ class RestPyModule:
     RETRIES_URL = 3
     RETRIES_TIMEOUT_SECONDS = 1
     REQUEST_TIMEOUT_SECONDS = 30
+    ssl_verify = True
     RETRIES_TIMEOUT_STATUS_CODES = [HTTPStatus.REQUEST_TIMEOUT, HTTPStatus.GATEWAY_TIMEOUT]
     RETRIES_STATUS_CODES = [HTTPStatus.REQUEST_TIMEOUT, HTTPStatus.GATEWAY_TIMEOUT]
     REFRESH_LOGIN_STATUS_CODES = [HTTPStatus.UNAUTHORIZED]
@@ -86,7 +91,7 @@ class RestPyModule:
     _logger: Logger = None
     _session: requests.Session = None
 
-    def __init__(self, headers: dict = None, base_url: str = None, base_url_params: list = None, auth_action: RestPyAuthModule = None):
+    def __init__(self, headers: dict = None, base_url: str = None, base_url_params: list = None, auth_action: RestPyAuthModule = None, ssl_verify: bool = None):
         """Create a client.
 
         Args:
@@ -95,6 +100,8 @@ class RestPyModule:
             base_url_params: Field definitions (`url_params` dicts) added to every endpoint, for
                 placeholders that live in the base URL.
             auth_action: Authentication module. It can also be set later with `set_auth()`.
+            ssl_verify: Verify TLS certificates (bool or CA bundle path). Defaults to the class
+                attribute, which is True.
 
         Raises:
             ValueError: If `auth_action` is not a `RestPyAuthModule` instance.
@@ -109,6 +116,8 @@ class RestPyModule:
         self._EXCEPTION_VALID_RESPONSE_RUNNER = list(self._EXCEPTION_VALID_RESPONSE_RUNNER)
         if headers:
             self.headers = dict(headers)
+        if ssl_verify is not None:
+            self.ssl_verify = ssl_verify
         if base_url:
             self._base_url = base_url
         if base_url_params:
@@ -486,7 +495,7 @@ class RestPyModule:
 
             self.logger.debug(f"[{self.name}] {request_method} {nurl}")
             return RequestMethodChoice.request(request_method, session=self.session)(
-                nurl, params=query_params, data=ndata, headers=headers, cookies=self.auth_module.cookies, timeout=self.REQUEST_TIMEOUT_SECONDS
+                nurl, params=query_params, data=ndata, headers=headers, cookies=self.auth_module.cookies, timeout=self.REQUEST_TIMEOUT_SECONDS, verify=self.ssl_verify
             )
         else:
             return RequestMethodChoice.request(request_method, session=self.session)(
@@ -496,6 +505,7 @@ class RestPyModule:
                 headers=headers,
                 cookies=self.auth_module.cookies,
                 timeout=self.REQUEST_TIMEOUT_SECONDS,
+                verify=self.ssl_verify,
             )
 
     def _apply_custom_data_to_pre_url(self, request_method, rp_url, nurl, params, **xtra_params):
